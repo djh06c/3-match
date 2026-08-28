@@ -1,160 +1,269 @@
 import Phaser from 'phaser';
-import Match3Grid from '../game/Match3Grid.js';
+import Match3Board from '../game/Match3Board.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
     super('MainScene');
   }
 
-  create() {
-    this.tileSize = 64;
-    this.boardOffsetX = 140;
-    this.boardOffsetY = 110;
-
-    this.tileColors = [
-      0x8b5cf6, // lilla
-      0x06b6d4, // cyan
-      0x22c55e, // grøn
-      0xf59e0b, // orange
-      0xef4444, // rød
-      0xe5e7eb  // lys grå
-    ];
-
-    this.tileLabels = ['CO', 'EM', 'XL', 'FD', 'PC', 'LP'];
-    // Coffee, Email, Excel, Folder, PaperClip, Laptop
-
-    this.selectedCell = null;
-
-    this.grid = new Match3Grid(8, 8, 6);
-    this.grid.generateGrid();
-
-    this.titleText = this.add.text(20, 20, 'Corporate Crush - Match-3 Prototype', {
-      fontSize: '24px',
-      color: '#ffffff'
-    });
-
-    this.infoText = this.add.text(
-      20,
-      55,
-      'Klik på 2 nabo-brikker for at bytte dem',
-      {
-        fontSize: '16px',
-        color: '#dddddd'
-      }
+  preload() {
+    this.load.image(
+      'coffee',
+      '/assets/icons/Kaffe.png'
     );
 
-    this.statusText = this.add.text(20, 80, 'Board klar.', {
-      fontSize: '16px',
-      color: '#ffff88'
-    });
+    this.load.image(
+      'email',
+      '/assets/icons/Email.png'
+    );
 
-    this.boardContainer = this.add.container(0, 0);
+    this.load.image(
+      'laptop',
+      '/assets/icons/Laptop.png'
+    );
 
-    this.renderBoard();
+    this.load.image(
+      'notebook',
+      '/assets/icons/Notesbog.png'
+    );
 
-    console.log('Grid genereret:');
-    console.table(this.grid.cells);
+    this.load.image(
+      'phone',
+      '/assets/icons/Telefon.png'
+    );
+
+    this.load.image(
+      'clock',
+      '/assets/icons/Ur.png'
+    );
   }
 
-  renderBoard() {
-    this.boardContainer.removeAll(true);
+  create() {
+    const width =
+      this.scale.width;
 
-    for (let r = 0; r < this.grid.rows; r++) {
-      for (let c = 0; c < this.grid.cols; c++) {
-        const value = this.grid.cells[r][c];
-        const x = this.boardOffsetX + c * this.tileSize + this.tileSize / 2;
-        const y = this.boardOffsetY + r * this.tileSize + this.tileSize / 2;
+    // =====================================
+    // TOP / BATTLE AREA
+    // =====================================
 
-        const isSelected =
-          this.selectedCell &&
-          this.selectedCell.row === r &&
-          this.selectedCell.col === c;
+    this.topAreaHeight = 240;
 
-        const rect = this.add.rectangle(
-          x,
-          y,
-          this.tileSize - 4,
-          this.tileSize - 4,
-          this.tileColors[value]
+    this.add.rectangle(
+      width / 2,
+      this.topAreaHeight / 2,
+      width,
+      this.topAreaHeight,
+      0x3a3a3a
+    );
+
+    this.add.text(
+      width / 2,
+      55,
+      'BATTLE AREA PLACEHOLDER',
+      {
+        fontSize: '22px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+
+    // Player placeholder
+    this.add.rectangle(
+      width * 0.25,
+      155,
+      90,
+      110,
+      0x4f6fad
+    );
+
+    this.add.text(
+      width * 0.25,
+      155,
+      'PLAYER',
+      {
+        fontSize: '16px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+
+    // Enemy placeholder
+    this.add.rectangle(
+      width * 0.75,
+      155,
+      90,
+      110,
+      0x9b3d3d
+    );
+
+    this.add.text(
+      width * 0.75,
+      155,
+      'ENEMY',
+      {
+        fontSize: '16px',
+        color: '#ffffff'
+      }
+    ).setOrigin(0.5);
+
+    // Skillelinje
+    this.add.rectangle(
+      width / 2,
+      this.topAreaHeight,
+      width,
+      4,
+      0xffffff
+    );
+
+    // =====================================
+    // STATUS
+    // =====================================
+
+    this.statusText =
+      this.add.text(
+        width / 2,
+        this.topAreaHeight + 15,
+        'Board klar.',
+        {
+          fontSize: '16px',
+          color: '#ffff88'
+        }
+      )
+      .setOrigin(0.5);
+
+    // =====================================
+    // BOARD
+    // =====================================
+
+    const tileSize = 52;
+
+    const boardWidth =
+      8 * tileSize;
+
+    const boardX =
+      (width - boardWidth) / 2;
+
+    const boardY =
+      this.topAreaHeight + 40;
+
+    this.board =
+      new Match3Board(
+        this,
+        {
+          x: boardX,
+          y: boardY,
+
+          rows: 8,
+          cols: 8,
+
+          colorCount: 6,
+
+          tileSize,
+
+          iconSize: 32,
+
+          tileTextures: [
+            'coffee',
+            'email',
+            'laptop',
+            'notebook',
+            'phone',
+            'clock'
+          ],
+
+          tileColors: [
+            0x8b5cf6,
+            0x06b6d4,
+            0x22c55e,
+            0xf59e0b,
+            0xef4444,
+            0xe5e7eb
+          ],
+
+          onStateChange:
+            state => {
+              this.handleBoardState(
+                state
+              );
+            },
+
+          onMoveComplete:
+            result => {
+              this.handleMoveComplete(
+                result
+              );
+            }
+        }
+      );
+  }
+
+  // =====================================
+  // BOARD STATE
+  // =====================================
+
+  handleBoardState(state) {
+    switch (state) {
+      case 'SWAPPING':
+        this.statusText.setText(
+          'Bytter...'
         );
+        break;
 
-        rect.setStrokeStyle(isSelected ? 4 : 2, isSelected ? 0xffff00 : 0x111111);
-        rect.setInteractive();
+      case 'SWAP_BACK':
+        this.statusText.setText(
+          'Ugyldigt træk.'
+        );
+        break;
 
-        rect.on('pointerdown', () => {
-          this.handleTileClick(r, c);
-        });
+      case 'REMOVING':
+        this.statusText.setText(
+          'Match!'
+        );
+        break;
 
-        const label = this.add.text(x, y, this.tileLabels[value], {
-          fontSize: '18px',
-          color: '#111111',
-          fontStyle: 'bold'
-        });
-        label.setOrigin(0.5);
-
-        this.boardContainer.add(rect);
-        this.boardContainer.add(label);
-      }
+      case 'FALLING':
+        this.statusText.setText(
+          'Tiles falder...'
+        );
+        break;
     }
   }
 
-  handleTileClick(row, col) {
-    if (!this.selectedCell) {
-      this.selectedCell = { row, col };
-      this.statusText.setText(`Valgt felt: (${row}, ${col})`);
-      this.renderBoard();
+  // =====================================
+  // MOVE RESULT
+  // =====================================
+
+  handleMoveComplete(result) {
+    if (!result.valid) {
+      this.statusText.setText(
+        'Ingen match - prøv igen.'
+      );
+
       return;
     }
 
-    const first = this.selectedCell;
+    if (!result.hasValidMoves) {
+      this.statusText.setText(
+        `Chain x${result.chains} - ingen mulige træk!`
+      );
 
-    // Klik på samme igen = fjern valg
-    if (first.row === row && first.col === col) {
-      this.selectedCell = null;
-      this.statusText.setText('Valg fjernet.');
-      this.renderBoard();
       return;
     }
 
-    // Kun naboer må byttes
-    if (!this.grid.areAdjacent(first.row, first.col, row, col)) {
-      this.selectedCell = { row, col };
-      this.statusText.setText('Vælg en nabo-brik.');
-      this.renderBoard();
+    if (result.chains > 1) {
+      this.statusText.setText(
+        `Chain x${result.chains}! ` +
+        `${result.totalMatched} tiles fjernet.`
+      );
+
       return;
     }
 
-    const success = this.grid.trySwap(first.row, first.col, row, col);
-    this.selectedCell = null;
+    this.statusText.setText(
+      `${result.totalMatched} tiles matchet.`
+    );
 
-    if (!success) {
-      this.statusText.setText('Ingen match - bytte blev annulleret.');
-      this.renderBoard();
-      return;
-    }
-
-    let chainCount = 0;
-
-    while (true) {
-      const matches = this.grid.findMatches();
-
-      if (matches.length === 0) {
-        break;
-      }
-
-      chainCount++;
-      console.log(`Chain ${chainCount}:`, matches);
-      this.grid.collapseAndRefill(matches);
-    }
-
-    this.renderBoard();
-
-    if (!this.grid.hasValidMoves()) {
-      this.statusText.setText(`Match lavet! Chain count: ${chainCount}. Ingen gyldige træk tilbage.`);
-    } else {
-      this.statusText.setText(`Match lavet! Chain count: ${chainCount}.`);
-    }
-
-    console.table(this.grid.cells);
+    console.log(
+      'Move result:',
+      result
+    );
   }
 }

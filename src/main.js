@@ -7,6 +7,7 @@ const config = {
   width: 800,
   height: 700,
   backgroundColor: '#222222',
+  pixelArt: true,
   scene: [MainScene]
 };
 
