@@ -3,8 +3,25 @@ export default class Match3Grid {
     this.rows = rows;
     this.cols = cols;
     this.colorCount = colorCount;
+
     this.cells = [];
+
+    // Hvor kraftigt boardets nuværende fordeling
+    // påvirker sandsynligheden.
+    //
+    // 0 = helt tilfældigt
+    // 1 = moderat balancing
+    // 2+ = stærkere balancing
+    this.weightStrength = 1.0;
+
+    // En tile må aldrig få mindre end denne vægt.
+    // Ellers kan en type næsten forsvinde helt.
+    this.minimumWeight = 0.15;
   }
+
+  // =====================================================
+  // GENERATION
+  // =====================================================
 
   generateGrid() {
     let attempts = 0;
@@ -12,27 +29,27 @@ export default class Match3Grid {
     do {
       this.cells = [];
 
-      for (let r = 0; r < this.rows; r++) {
-        const row = [];
+      for (let row = 0; row < this.rows; row++) {
+        const newRow = [];
 
-        for (let c = 0; c < this.cols; c++) {
+        for (let col = 0; col < this.cols; col++) {
           let color;
 
           do {
             color = this.randomColor();
           } while (
             this.wouldCreateInitialMatch(
-              r,
-              c,
+              row,
+              col,
               color,
-              row
+              newRow
             )
           );
 
-          row.push(color);
+          newRow.push(color);
         }
 
-        this.cells.push(row);
+        this.cells.push(newRow);
       }
 
       attempts++;
@@ -42,11 +59,123 @@ export default class Match3Grid {
     );
   }
 
+  // =====================================================
+  // WEIGHTED TILE SELECTION
+  // =====================================================
+
   randomColor() {
-    return Math.floor(
-      Math.random() * this.colorCount
+    const counts = this.getColorCounts();
+
+    const totalTiles =
+      counts.reduce(
+        (sum, count) => sum + count,
+        0
+      );
+
+    // Når boardet endnu er tomt,
+    // brug normal random.
+    if (totalTiles === 0) {
+      return Math.floor(
+        Math.random() * this.colorCount
+      );
+    }
+
+    const expectedAmount =
+      totalTiles / this.colorCount;
+
+    const weights = [];
+
+    for (
+      let color = 0;
+      color < this.colorCount;
+      color++
+    ) {
+      const count = counts[color];
+
+      /*
+       * count < expectedAmount
+       *      -> større chance
+       *
+       * count > expectedAmount
+       *      -> mindre chance
+       *
+       * Eksempel:
+       *
+       * Ur:      16 tiles -> lavere weight
+       * Kaffe:    7 tiles -> højere weight
+       */
+
+      const difference =
+        (count - expectedAmount) /
+        Math.max(expectedAmount, 1);
+
+      let weight =
+        Math.exp(
+          -this.weightStrength *
+          difference
+        );
+
+      weight = Math.max(
+        this.minimumWeight,
+        weight
+      );
+
+      weights.push(weight);
+    }
+
+    return this.pickWeightedColor(
+      weights
     );
   }
+
+  getColorCounts() {
+    const counts =
+      Array(this.colorCount).fill(0);
+
+    for (const row of this.cells) {
+      for (const value of row) {
+        if (
+          value !== null &&
+          value !== undefined
+        ) {
+          counts[value]++;
+        }
+      }
+    }
+
+    return counts;
+  }
+
+  pickWeightedColor(weights) {
+    const totalWeight =
+      weights.reduce(
+        (sum, weight) =>
+          sum + weight,
+        0
+      );
+
+    let roll =
+      Math.random() * totalWeight;
+
+    for (
+      let color = 0;
+      color < weights.length;
+      color++
+    ) {
+      roll -= weights[color];
+
+      if (roll <= 0) {
+        return color;
+      }
+    }
+
+    // Sikkerheds-fallback
+    return weights.length - 1;
+  }
+
+  // =====================================================
+  // INITIAL MATCH PREVENTION
+  // =====================================================
 
   wouldCreateInitialMatch(
     row,
@@ -54,7 +183,6 @@ export default class Match3Grid {
     color,
     currentRow
   ) {
-    // To ens til venstre
     if (
       col >= 2 &&
       currentRow[col - 1] === color &&
@@ -63,7 +191,6 @@ export default class Match3Grid {
       return true;
     }
 
-    // To ens ovenover
     if (
       row >= 2 &&
       this.cells[row - 1][col] === color &&
@@ -75,6 +202,10 @@ export default class Match3Grid {
     return false;
   }
 
+  // =====================================================
+  // BASIC HELPERS
+  // =====================================================
+
   inBounds(row, col) {
     return (
       row >= 0 &&
@@ -84,21 +215,44 @@ export default class Match3Grid {
     );
   }
 
-  areAdjacent(r1, c1, r2, c2) {
-    const rowDifference = Math.abs(r1 - r2);
-    const colDifference = Math.abs(c1 - c2);
+  areAdjacent(
+    r1,
+    c1,
+    r2,
+    c2
+  ) {
+    const rowDifference =
+      Math.abs(r1 - r2);
 
-    return rowDifference + colDifference === 1;
+    const colDifference =
+      Math.abs(c1 - c2);
+
+    return (
+      rowDifference +
+      colDifference ===
+      1
+    );
   }
 
-  swapCells(r1, c1, r2, c2) {
-    const temp = this.cells[r1][c1];
+  swapCells(
+    r1,
+    c1,
+    r2,
+    c2
+  ) {
+    const temp =
+      this.cells[r1][c1];
 
     this.cells[r1][c1] =
       this.cells[r2][c2];
 
-    this.cells[r2][c2] = temp;
+    this.cells[r2][c2] =
+      temp;
   }
+
+  // =====================================================
+  // SWAP VALIDATION
+  // =====================================================
 
   matchesContainEitherCell(
     matches,
@@ -107,21 +261,28 @@ export default class Match3Grid {
     r2,
     c2
   ) {
-    return matches.some(match =>
-      match.cells.some(cell =>
-        (
-          cell.row === r1 &&
-          cell.col === c1
-        ) ||
-        (
-          cell.row === r2 &&
-          cell.col === c2
+    return matches.some(
+      match =>
+        match.cells.some(
+          cell =>
+            (
+              cell.row === r1 &&
+              cell.col === c1
+            ) ||
+            (
+              cell.row === r2 &&
+              cell.col === c2
+            )
         )
-      )
     );
   }
 
-  trySwap(r1, c1, r2, c2) {
+  trySwap(
+    r1,
+    c1,
+    r2,
+    c2
+  ) {
     if (
       !this.inBounds(r1, c1) ||
       !this.inBounds(r2, c2)
@@ -147,7 +308,8 @@ export default class Match3Grid {
       c2
     );
 
-    const matches = this.findMatches();
+    const matches =
+      this.findMatches();
 
     const valid =
       this.matchesContainEitherCell(
@@ -172,14 +334,22 @@ export default class Match3Grid {
     return true;
   }
 
+  // =====================================================
+  // FIND MATCHES
+  // =====================================================
+
   findMatches() {
     const matches = [];
 
     // -------------------------
-    // Vandrette matches
+    // Horizontal
     // -------------------------
 
-    for (let row = 0; row < this.rows; row++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
       let col = 0;
 
       while (col < this.cols) {
@@ -189,8 +359,10 @@ export default class Match3Grid {
         let length = 1;
 
         while (
-          col + length < this.cols &&
-          this.cells[row][col + length] ===
+          col + length <
+            this.cols &&
+          this.cells[row]
+            [col + length] ===
             color
         ) {
           length++;
@@ -202,7 +374,11 @@ export default class Match3Grid {
         ) {
           const cells = [];
 
-          for (let i = 0; i < length; i++) {
+          for (
+            let i = 0;
+            i < length;
+            i++
+          ) {
             cells.push({
               row,
               col: col + i
@@ -212,7 +388,8 @@ export default class Match3Grid {
           matches.push({
             color,
             length,
-            direction: 'horizontal',
+            direction:
+              'horizontal',
             cells
           });
         }
@@ -222,10 +399,14 @@ export default class Match3Grid {
     }
 
     // -------------------------
-    // Lodrette matches
+    // Vertical
     // -------------------------
 
-    for (let col = 0; col < this.cols; col++) {
+    for (
+      let col = 0;
+      col < this.cols;
+      col++
+    ) {
       let row = 0;
 
       while (row < this.rows) {
@@ -235,8 +416,10 @@ export default class Match3Grid {
         let length = 1;
 
         while (
-          row + length < this.rows &&
-          this.cells[row + length][col] ===
+          row + length <
+            this.rows &&
+          this.cells
+            [row + length][col] ===
             color
         ) {
           length++;
@@ -248,7 +431,11 @@ export default class Match3Grid {
         ) {
           const cells = [];
 
-          for (let i = 0; i < length; i++) {
+          for (
+            let i = 0;
+            i < length;
+            i++
+          ) {
             cells.push({
               row: row + i,
               col
@@ -258,7 +445,8 @@ export default class Match3Grid {
           matches.push({
             color,
             length,
-            direction: 'vertical',
+            direction:
+              'vertical',
             cells
           });
         }
@@ -270,11 +458,18 @@ export default class Match3Grid {
     return matches;
   }
 
+  // =====================================================
+  // COLLAPSE + REFILL
+  // =====================================================
+
   collapseAndRefill(matches) {
-    const matchedCells = new Set();
+    const matchedCells =
+      new Set();
 
     for (const match of matches) {
-      for (const cell of match.cells) {
+      for (
+        const cell of match.cells
+      ) {
         matchedCells.add(
           `${cell.row},${cell.col}`
         );
@@ -283,18 +478,23 @@ export default class Match3Grid {
 
     const removed = [];
 
-    // Fjern matches logisk
-    for (const key of matchedCells) {
+    for (
+      const key of matchedCells
+    ) {
       const [row, col] =
-        key.split(',').map(Number);
+        key
+          .split(',')
+          .map(Number);
 
       removed.push({
         row,
         col,
-        value: this.cells[row][col]
+        value:
+          this.cells[row][col]
       });
 
-      this.cells[row][col] = null;
+      this.cells[row][col] =
+        null;
     }
 
     const moved = [];
@@ -304,11 +504,17 @@ export default class Match3Grid {
     // Gravity
     // -------------------------
 
-    for (let col = 0; col < this.cols; col++) {
-      let writeRow = this.rows - 1;
+    for (
+      let col = 0;
+      col < this.cols;
+      col++
+    ) {
+      let writeRow =
+        this.rows - 1;
 
       for (
-        let row = this.rows - 1;
+        let row =
+          this.rows - 1;
         row >= 0;
         row--
       ) {
@@ -320,7 +526,8 @@ export default class Match3Grid {
         }
 
         if (row !== writeRow) {
-          this.cells[writeRow][col] =
+          this.cells
+            [writeRow][col] =
             value;
 
           this.cells[row][col] =
@@ -338,7 +545,7 @@ export default class Match3Grid {
       }
 
       // -------------------------
-      // Nye tiles
+      // Weighted refill
       // -------------------------
 
       for (
@@ -352,8 +559,6 @@ export default class Match3Grid {
         this.cells[row][col] =
           value;
 
-        // -1, -2, -3 osv.
-        // betyder positioner over boardet
         const fromRow =
           row - writeRow - 1;
 
@@ -373,6 +578,10 @@ export default class Match3Grid {
     };
   }
 
+  // =====================================================
+  // VALID MOVE CHECK
+  // =====================================================
+
   hasValidMoves() {
     for (
       let row = 0;
@@ -384,14 +593,19 @@ export default class Match3Grid {
         col < this.cols;
         col++
       ) {
+        // Kun højre og ned,
+        // ellers tjekker vi hvert par
+        // to gange.
         const neighbours = [
           [row, col + 1],
           [row + 1, col]
         ];
 
         for (
-          const [otherRow, otherCol]
-          of neighbours
+          const [
+            otherRow,
+            otherCol
+          ] of neighbours
         ) {
           if (
             !this.inBounds(
