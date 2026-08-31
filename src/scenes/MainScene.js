@@ -36,11 +36,15 @@ export default class MainScene extends Phaser.Scene {
       'clock',
       '/assets/icons/Ur.png'
     );
+
+    this.load.image(
+      'match3Background',
+      '/assets/backgrounds/Baggrund-match3.png'
+    );
   }
 
   create() {
-    const width =
-      this.scale.width;
+    const width = this.scale.width;
 
     // =====================================
     // TOP / BATTLE AREA
@@ -114,20 +118,33 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
+    // MATCH-3 BACKGROUND
+    // =====================================
+
+    const match3Background = this.add.image(
+      width / 2,
+      this.topAreaHeight + 230,
+      'match3Background'
+    );
+
+    match3Background.setScale(4);
+    match3Background.setDepth(0);
+
+    // =====================================
     // STATUS
     // =====================================
 
-    this.statusText =
-      this.add.text(
-        width / 2,
-        this.topAreaHeight + 15,
-        'Board klar.',
-        {
-          fontSize: '16px',
-          color: '#ffff88'
-        }
-      )
-      .setOrigin(0.5);
+    this.statusText = this.add.text(
+      width / 2,
+      this.topAreaHeight + 10,
+      'Board klar.',
+      {
+        fontSize: '16px',
+        color: '#ffff88'
+      }
+    )
+    .setOrigin(0.5)
+    .setDepth(10);
 
     // =====================================
     // BOARD
@@ -141,58 +158,63 @@ export default class MainScene extends Phaser.Scene {
     const boardX =
       (width - boardWidth) / 2;
 
+    // Matcher din 200x115 baggrund:
+    // 5 source-pixels fra toppen = 20 game-pixels
+    // + lidt centrering inde i den sorte box
     const boardY =
-      this.topAreaHeight + 40;
+      this.topAreaHeight + 22;
 
-    this.board =
-      new Match3Board(
-        this,
-        {
-          x: boardX,
-          y: boardY,
+    this.board = new Match3Board(
+      this,
+      {
+        x: boardX,
+        y: boardY,
 
-          rows: 8,
-          cols: 8,
+        rows: 8,
+        cols: 8,
 
-          colorCount: 6,
+        colorCount: 6,
 
-          tileSize,
+        tileSize,
 
-          iconSize: 32,
+        iconSize: 32,
 
-          tileTextures: [
-            'coffee',
-            'email',
-            'laptop',
-            'notebook',
-            'phone',
-            'clock'
-          ],
+        tileTextures: [
+          'coffee',
+          'email',
+          'laptop',
+          'notebook',
+          'phone',
+          'clock'
+        ],
 
-          tileColors: [
-            0x8b5cf6,
-            0x06b6d4,
-            0x22c55e,
-            0xf59e0b,
-            0xef4444,
-            0xe5e7eb
-          ],
+        tileColors: [
+          0x8b5cf6,
+          0x06b6d4,
+          0x22c55e,
+          0xf59e0b,
+          0xef4444,
+          0xe5e7eb
+        ],
 
-          onStateChange:
-            state => {
-              this.handleBoardState(
-                state
-              );
-            },
+        onStateChange:
+          state => {
+            this.handleBoardState(
+              state
+            );
+          },
 
-          onMoveComplete:
-            result => {
-              this.handleMoveComplete(
-                result
-              );
-            }
-        }
-      );
+        onMoveComplete:
+          result => {
+            this.handleMoveComplete(
+              result
+            );
+          }
+      }
+    );
+
+    // Sørg for at boardet ligger ovenpå baggrunden
+    this.board.container.setDepth(5);
   }
 
   // =====================================
@@ -224,6 +246,12 @@ export default class MainScene extends Phaser.Scene {
           'Tiles falder...'
         );
         break;
+
+      case 'GAME_OVER':
+        this.statusText.setText(
+          'GAME OVER'
+        );
+        break;
     }
   }
 
@@ -242,7 +270,7 @@ export default class MainScene extends Phaser.Scene {
 
     if (!result.hasValidMoves) {
       this.statusText.setText(
-        `Chain x${result.chains} - ingen mulige træk!`
+        `Chain x${result.chains} - GAME OVER`
       );
 
       return;
