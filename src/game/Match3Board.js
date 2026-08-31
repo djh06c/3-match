@@ -19,8 +19,11 @@ export default class Match3Board {
     this.x = config.x ?? 0;
     this.y = config.y ?? 0;
 
-    this.onMoveComplete = config.onMoveComplete ?? null;
-    this.onStateChange = config.onStateChange ?? null;
+    this.onMoveComplete =
+      config.onMoveComplete ?? null;
+
+    this.onStateChange =
+      config.onStateChange ?? null;
 
     // =====================================================
     // STATE
@@ -39,23 +42,25 @@ export default class Match3Board {
     // TILE APPEARANCE
     // =====================================================
 
-    this.tileColors = config.tileColors ?? [
-      0x8b5cf6,
-      0x06b6d4,
-      0x22c55e,
-      0xf59e0b,
-      0xef4444,
-      0xe5e7eb
-    ];
+    this.tileColors =
+      config.tileColors ?? [
+        0x8b5cf6,
+        0x06b6d4,
+        0x22c55e,
+        0xf59e0b,
+        0xef4444,
+        0xe5e7eb
+      ];
 
-    this.tileTextures = config.tileTextures ?? [
-      'coffee',
-      'email',
-      'laptop',
-      'notebook',
-      'phone',
-      'clock'
-    ];
+    this.tileTextures =
+      config.tileTextures ?? [
+        'coffee',
+        'email',
+        'laptop',
+        'notebook',
+        'phone',
+        'clock'
+      ];
 
     // =====================================================
     // GRID
@@ -73,25 +78,38 @@ export default class Match3Board {
     // PHASER OBJECTS
     // =====================================================
 
-    this.container = this.scene.add.container(0, 0);
+    this.container =
+      this.scene.add.container(
+        0,
+        0
+      );
 
-    this.tileViews = Array.from(
-      { length: this.rows },
-      () => Array(this.cols).fill(null)
-    );
+    this.tileViews =
+      Array.from(
+        {
+          length: this.rows
+        },
+        () =>
+          Array(
+            this.cols
+          ).fill(null)
+      );
 
     this.createInitialTiles();
 
-    // Hvis pointer bliver sluppet udenfor en konkret tile,
-    // sørger vi for at drag-state ikke bliver hængende.
-    this.scene.input.on('pointerup', () => {
-      if (
-        this.pointerDown &&
-        !this.dragSwapTriggered
-      ) {
-        this.resetPointerState();
+    // Hvis pointer bliver sluppet
+    // udenfor en tile.
+    this.scene.input.on(
+      'pointerup',
+      () => {
+        if (
+          this.pointerDown &&
+          !this.dragSwapTriggered
+        ) {
+          this.resetPointerState();
+        }
       }
-    });
+    );
   }
 
   // =====================================================
@@ -102,7 +120,9 @@ export default class Match3Board {
     this.state = state;
 
     if (this.onStateChange) {
-      this.onStateChange(state);
+      this.onStateChange(
+        state
+      );
     }
   }
 
@@ -111,24 +131,39 @@ export default class Match3Board {
   // =====================================================
 
   createInitialTiles() {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const value = this.grid.cells[row][col];
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const value =
+          this.grid.cells
+            [row]
+            [col];
 
-        const position = this.getCellPosition(
-          row,
-          col
-        );
+        const position =
+          this.getCellPosition(
+            row,
+            col
+          );
 
-        const tile = this.createTileView(
-          value,
-          row,
-          col,
-          position.x,
-          position.y
-        );
+        const tile =
+          this.createTileView(
+            value,
+            row,
+            col,
+            position.x,
+            position.y
+          );
 
-        this.tileViews[row][col] = tile;
+        this.tileViews
+          [row]
+          [col] = tile;
       }
     }
   }
@@ -144,10 +179,11 @@ export default class Match3Board {
     x,
     y
   ) {
-    const tile = this.scene.add.container(
-      x,
-      y
-    );
+    const tile =
+      this.scene.add.container(
+        x,
+        y
+      );
 
     tile.gridRow = row;
     tile.gridCol = col;
@@ -173,17 +209,24 @@ export default class Match3Board {
     );
 
     tile.border = background;
-    tile.add(background);
+
+    tile.add(
+      background
+    );
 
     // -------------------------
     // Icon
     // -------------------------
 
     const texture =
-      this.tileTextures[value];
+      this.tileTextures[
+        value
+      ];
 
     if (
-      this.scene.textures.exists(texture)
+      this.scene.textures.exists(
+        texture
+      )
     ) {
       const icon =
         this.scene.add.image(
@@ -198,7 +241,10 @@ export default class Match3Board {
       );
 
       tile.icon = icon;
-      tile.add(icon);
+
+      tile.add(
+        icon
+      );
     } else {
       const fallback =
         this.scene.add.text(
@@ -211,9 +257,13 @@ export default class Match3Board {
           }
         );
 
-      fallback.setOrigin(0.5);
+      fallback.setOrigin(
+        0.5
+      );
 
-      tile.add(fallback);
+      tile.add(
+        fallback
+      );
     }
 
     // -------------------------
@@ -234,11 +284,12 @@ export default class Match3Board {
       useHandCursor: true
     });
 
-    tile.hitZone = hitZone;
+    tile.hitZone =
+      hitZone;
 
-    // Tilføj sidst, så den ligger ovenpå
-    // resten input-mæssigt.
-    tile.add(hitZone);
+    tile.add(
+      hitZone
+    );
 
     hitZone.on(
       'pointerdown',
@@ -270,7 +321,9 @@ export default class Match3Board {
       }
     );
 
-    this.container.add(tile);
+    this.container.add(
+      tile
+    );
 
     return tile;
   }
@@ -279,16 +332,21 @@ export default class Match3Board {
   // POSITION
   // =====================================================
 
-  getCellPosition(row, col) {
+  getCellPosition(
+    row,
+    col
+  ) {
     return {
       x:
         this.x +
-        col * this.tileSize +
+        col *
+          this.tileSize +
         this.tileSize / 2,
 
       y:
         this.y +
-        row * this.tileSize +
+        row *
+          this.tileSize +
         this.tileSize / 2
     };
   }
@@ -297,8 +355,13 @@ export default class Match3Board {
   // POINTER INPUT
   // =====================================================
 
-  handlePointerDown(tile, pointer) {
-    if (this.state !== 'IDLE') {
+  handlePointerDown(
+    tile,
+    pointer
+  ) {
+    if (
+      this.state !== 'IDLE'
+    ) {
       return;
     }
 
@@ -307,7 +370,10 @@ export default class Match3Board {
     this.dragSwapTriggered = false;
   }
 
-  async handlePointerOver(tile, pointer) {
+  async handlePointerOver(
+    tile,
+    pointer
+  ) {
     if (
       !this.pointerDown ||
       !this.dragStartTile ||
@@ -320,12 +386,12 @@ export default class Match3Board {
     const start =
       this.dragStartTile;
 
-    // Stadig samme tile
-    if (start === tile) {
+    if (
+      start === tile
+    ) {
       return;
     }
 
-    // Kun naboer må bruges til drag-swap
     if (
       !this.grid.areAdjacent(
         start.gridRow,
@@ -337,9 +403,12 @@ export default class Match3Board {
       return;
     }
 
-    this.dragSwapTriggered = true;
+    this.dragSwapTriggered =
+      true;
 
-    this.selectedCell = null;
+    this.selectedCell =
+      null;
+
     this.updateSelectionVisuals();
 
     await this.performSwap(
@@ -352,15 +421,19 @@ export default class Match3Board {
     this.resetPointerState();
   }
 
-  async handlePointerUp(tile, pointer) {
-    if (!this.pointerDown) {
+  async handlePointerUp(
+    tile,
+    pointer
+  ) {
+    if (
+      !this.pointerDown
+    ) {
       return;
     }
 
-    // Hvis drag allerede har udført swappet,
-    // skal et efterfølgende pointerup
-    // ikke gøre noget.
-    if (this.dragSwapTriggered) {
+    if (
+      this.dragSwapTriggered
+    ) {
       this.resetPointerState();
       return;
     }
@@ -370,7 +443,9 @@ export default class Match3Board {
 
     this.resetPointerState();
 
-    if (!clickedTile) {
+    if (
+      !clickedTile
+    ) {
       return;
     }
 
@@ -390,37 +465,44 @@ export default class Match3Board {
   // CLICK-TO-SWAP
   // =====================================================
 
-  async handleTileClick(row, col) {
-    if (this.state !== 'IDLE') {
+  async handleTileClick(
+    row,
+    col
+  ) {
+    if (
+      this.state !== 'IDLE'
+    ) {
       return;
     }
 
-    // Første tile vælges
-    if (!this.selectedCell) {
+    if (
+      !this.selectedCell
+    ) {
       this.selectedCell = {
         row,
         col
       };
 
       this.updateSelectionVisuals();
+
       return;
     }
 
     const first =
       this.selectedCell;
 
-    // Samme tile igen = deselect
     if (
       first.row === row &&
       first.col === col
     ) {
-      this.selectedCell = null;
+      this.selectedCell =
+        null;
+
       this.updateSelectionVisuals();
+
       return;
     }
 
-    // Hvis ikke nabo:
-    // vælg den nye tile
     if (
       !this.grid.areAdjacent(
         first.row,
@@ -435,10 +517,13 @@ export default class Match3Board {
       };
 
       this.updateSelectionVisuals();
+
       return;
     }
 
-    this.selectedCell = null;
+    this.selectedCell =
+      null;
+
     this.updateSelectionVisuals();
 
     await this.performSwap(
@@ -459,20 +544,34 @@ export default class Match3Board {
     secondRow,
     secondCol
   ) {
-    if (this.state !== 'IDLE') {
+    if (
+      this.state !== 'IDLE'
+    ) {
       return;
     }
 
-    this.setState('SWAPPING');
+    this.setState(
+      'SWAPPING'
+    );
 
     const tileA =
-      this.tileViews[firstRow][firstCol];
+      this.tileViews
+        [firstRow]
+        [firstCol];
 
     const tileB =
-      this.tileViews[secondRow][secondCol];
+      this.tileViews
+        [secondRow]
+        [secondCol];
 
-    if (!tileA || !tileB) {
-      this.setState('IDLE');
+    if (
+      !tileA ||
+      !tileB
+    ) {
+      this.setState(
+        'IDLE'
+      );
+
       return;
     }
 
@@ -501,17 +600,25 @@ export default class Match3Board {
     // Ugyldigt move
     // -------------------------
 
-    if (!success) {
-      this.setState('SWAP_BACK');
+    if (
+      !success
+    ) {
+      this.setState(
+        'SWAP_BACK'
+      );
 
       await this.animateSwap(
         tileA,
         tileB
       );
 
-      this.setState('IDLE');
+      this.setState(
+        'IDLE'
+      );
 
-      if (this.onMoveComplete) {
+      if (
+        this.onMoveComplete
+      ) {
         this.onMoveComplete({
           valid: false,
           chains: 0,
@@ -527,11 +634,13 @@ export default class Match3Board {
     // Opdatér tileViews
     // -------------------------
 
-    this.tileViews[firstRow][firstCol] =
-      tileB;
+    this.tileViews
+      [firstRow]
+      [firstCol] = tileB;
 
-    this.tileViews[secondRow][secondCol] =
-      tileA;
+    this.tileViews
+      [secondRow]
+      [secondCol] = tileA;
 
     this.updateTilePositionData(
       tileB,
@@ -546,7 +655,7 @@ export default class Match3Board {
     );
 
     // -------------------------
-    // Resolve matches/cascades
+    // Resolve
     // -------------------------
 
     await this.resolveBoard();
@@ -557,22 +666,39 @@ export default class Match3Board {
   // =====================================================
 
   updateSelectionVisuals() {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
         const selected =
           this.selectedCell &&
-          this.selectedCell.row === row &&
-          this.selectedCell.col === col;
+          this.selectedCell.row ===
+            row &&
+          this.selectedCell.col ===
+            col;
 
         tile.border.setStrokeStyle(
-          selected ? 5 : 3,
+          selected
+            ? 5
+            : 3,
+
           selected
             ? 0xffff00
             : this.tileColors[
@@ -587,7 +713,10 @@ export default class Match3Board {
   // SWAP ANIMATION
   // =====================================================
 
-  async animateSwap(tileA, tileB) {
+  async animateSwap(
+    tileA,
+    tileB
+  ) {
     const a = {
       x: tileA.x,
       y: tileA.y
@@ -605,7 +734,8 @@ export default class Match3Board {
           x: b.x,
           y: b.y,
           duration: 140,
-          ease: 'Quad.easeInOut'
+          ease:
+            'Quad.easeInOut'
         }
       ),
 
@@ -615,7 +745,8 @@ export default class Match3Board {
           x: a.x,
           y: a.y,
           duration: 140,
-          ease: 'Quad.easeInOut'
+          ease:
+            'Quad.easeInOut'
         }
       )
     ]);
@@ -635,7 +766,9 @@ export default class Match3Board {
       const matches =
         this.grid.findMatches();
 
-      if (matches.length === 0) {
+      if (
+        matches.length === 0
+      ) {
         break;
       }
 
@@ -649,23 +782,47 @@ export default class Match3Board {
       totalMatched +=
         uniqueCells.length;
 
+      // VIGTIGT:
+      // Vi gemmer tile-typen NU,
+      // før matched tiles bliver fjernet.
+      const matchesWithTypes =
+        matches.map(match => {
+          const firstCell =
+            match.cells[0];
+
+          const tileValue =
+            this.grid.cells
+              [firstCell.row]
+              [firstCell.col];
+
+          return {
+            ...match,
+            tileValue
+          };
+        });
+
       allMatches.push({
-        chain: chainCount,
-        matches
+        chain:
+          chainCount,
+
+        matches:
+          matchesWithTypes
       });
 
       // -------------------------
       // Pop matches
       // -------------------------
 
-      this.setState('REMOVING');
+      this.setState(
+        'REMOVING'
+      );
 
       await this.animateMatches(
         matches
       );
 
       // -------------------------
-      // Gravity/refill
+      // Gravity / refill
       // -------------------------
 
       const changes =
@@ -673,27 +830,47 @@ export default class Match3Board {
           matches
         );
 
-      this.setState('FALLING');
+      this.setState(
+        'FALLING'
+      );
 
       await this.animateCollapseAndRefill(
         changes
       );
 
-      // Lille pause mellem cascades
-      await this.pause(60);
+      await this.pause(
+        60
+      );
     }
 
     const hasValidMoves =
       this.grid.hasValidMoves();
 
-    this.setState('IDLE');
+    if (
+      !hasValidMoves
+    ) {
+      this.setState(
+        'GAME_OVER'
+      );
+    } else {
+      this.setState(
+        'IDLE'
+      );
+    }
 
-    if (this.onMoveComplete) {
+    if (
+      this.onMoveComplete
+    ) {
       this.onMoveComplete({
         valid: true,
-        chains: chainCount,
+        chains:
+          chainCount,
+
         totalMatched,
-        matches: allMatches,
+
+        matches:
+          allMatches,
+
         hasValidMoves
       });
     }
@@ -703,7 +880,9 @@ export default class Match3Board {
   // MATCH ANIMATION
   // =====================================================
 
-  async animateMatches(matches) {
+  async animateMatches(
+    matches
+  ) {
     const cells =
       this.getUniqueMatchCells(
         matches
@@ -711,33 +890,41 @@ export default class Match3Board {
 
     const targets = [];
 
-    for (const cell of cells) {
+    for (
+      const cell
+      of cells
+    ) {
       const tile =
         this.tileViews
           [cell.row]
           [cell.col];
 
-      if (tile) {
-        targets.push(tile);
+      if (
+        tile
+      ) {
+        targets.push(
+          tile
+        );
       }
     }
 
-    if (targets.length === 0) {
+    if (
+      targets.length === 0
+    ) {
       return;
     }
 
-    // Lille pop
     await this.tween(
       targets,
       {
         scaleX: 1.15,
         scaleY: 1.15,
         duration: 70,
-        ease: 'Quad.easeOut'
+        ease:
+          'Quad.easeOut'
       }
     );
 
-    // Forsvind
     await this.tween(
       targets,
       {
@@ -745,18 +932,23 @@ export default class Match3Board {
         scaleY: 0,
         alpha: 0,
         duration: 110,
-        ease: 'Back.easeIn'
+        ease:
+          'Back.easeIn'
       }
     );
 
-    // Destroy matched tiles
-    for (const cell of cells) {
+    for (
+      const cell
+      of cells
+    ) {
       const tile =
         this.tileViews
           [cell.row]
           [cell.col];
 
-      if (!tile) {
+      if (
+        !tile
+      ) {
         continue;
       }
 
@@ -769,7 +961,7 @@ export default class Match3Board {
   }
 
   // =====================================================
-  // GRAVITY / REFILL ANIMATION
+  // GRAVITY / REFILL
   // =====================================================
 
   async animateCollapseAndRefill(
@@ -777,9 +969,14 @@ export default class Match3Board {
   ) {
     const newViews =
       Array.from(
-        { length: this.rows },
+        {
+          length:
+            this.rows
+        },
         () =>
-          Array(this.cols).fill(null)
+          Array(
+            this.cols
+          ).fill(null)
       );
 
     const moveMap =
@@ -801,12 +998,24 @@ export default class Match3Board {
     // Existing tiles
     // -------------------------
 
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
@@ -820,8 +1029,9 @@ export default class Match3Board {
             ? movement.toRow
             : row;
 
-        newViews[targetRow][col] =
-          tile;
+        newViews
+          [targetRow]
+          [col] = tile;
 
         this.updateTilePositionData(
           tile,
@@ -829,7 +1039,9 @@ export default class Match3Board {
           col
         );
 
-        if (movement) {
+        if (
+          movement
+        ) {
           const target =
             this.getCellPosition(
               targetRow,
@@ -846,12 +1058,16 @@ export default class Match3Board {
             this.tween(
               tile,
               {
-                x: target.x,
-                y: target.y,
+                x:
+                  target.x,
+
+                y:
+                  target.y,
 
                 duration:
                   150 +
-                  distance * 35,
+                  distance *
+                    35,
 
                 ease:
                   'Cubic.easeIn'
@@ -893,7 +1109,8 @@ export default class Match3Board {
 
       newViews
         [spawn.toRow]
-        [spawn.col] = tile;
+        [spawn.col] =
+        tile;
 
       const distance =
         spawn.toRow -
@@ -903,12 +1120,16 @@ export default class Match3Board {
         this.tween(
           tile,
           {
-            x: end.x,
-            y: end.y,
+            x:
+              end.x,
+
+            y:
+              end.y,
 
             duration:
               170 +
-              distance * 35,
+              distance *
+                35,
 
             ease:
               'Cubic.easeIn'
@@ -924,18 +1145,35 @@ export default class Match3Board {
       animations
     );
 
-    // Reset visuelle properties
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    // Reset visuals
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
-        tile.setScale(1);
-        tile.setAlpha(1);
+        tile.setScale(
+          1
+        );
+
+        tile.setAlpha(
+          1
+        );
       }
     }
   }
@@ -949,16 +1187,27 @@ export default class Match3Board {
     row,
     col
   ) {
-    tile.gridRow = row;
-    tile.gridCol = col;
+    tile.gridRow =
+      row;
+
+    tile.gridCol =
+      col;
   }
 
-  getUniqueMatchCells(matches) {
+  getUniqueMatchCells(
+    matches
+  ) {
     const map =
       new Map();
 
-    for (const match of matches) {
-      for (const cell of match.cells) {
+    for (
+      const match
+      of matches
+    ) {
+      for (
+        const cell
+        of match.cells
+      ) {
         map.set(
           `${cell.row},${cell.col}`,
           cell
@@ -971,22 +1220,32 @@ export default class Match3Board {
     );
   }
 
-  tween(targets, config) {
-    return new Promise(resolve => {
-      this.scene.tweens.add({
-        targets,
-        ...config,
-        onComplete: resolve
-      });
-    });
+  tween(
+    targets,
+    config
+  ) {
+    return new Promise(
+      resolve => {
+        this.scene.tweens.add({
+          targets,
+          ...config,
+          onComplete:
+            resolve
+        });
+      }
+    );
   }
 
-  pause(milliseconds) {
-    return new Promise(resolve => {
-      this.scene.time.delayedCall(
-        milliseconds,
-        resolve
-      );
-    });
+  pause(
+    milliseconds
+  ) {
+    return new Promise(
+      resolve => {
+        this.scene.time.delayedCall(
+          milliseconds,
+          resolve
+        );
+      }
+    );
   }
 }
