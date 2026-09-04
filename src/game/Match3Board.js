@@ -84,6 +84,49 @@ export default class Match3Board {
         0
       );
 
+    // =====================================================
+    // BOARD MASK
+    // =====================================================
+
+    /*
+     * Masken gør, at tiles kun kan ses
+     * inde i selve match-3-boardets område.
+     *
+     * Tiles kan derfor godt eksistere over
+     * eller under boardet under animationer,
+     * men de bliver først synlige, når de
+     * bevæger sig ind i dette rektangel.
+     */
+
+    this.boardMaskShape =
+      this.scene.make.graphics({
+        x: 0,
+        y: 0,
+        add: false
+      });
+
+    this.boardMaskShape.fillStyle(
+      0xffffff
+    );
+
+    this.boardMaskShape.fillRect(
+      this.x,
+      this.y,
+      this.cols * this.tileSize,
+      this.rows * this.tileSize
+    );
+
+    this.boardMask =
+      this.boardMaskShape.createGeometryMask();
+
+    this.container.setMask(
+      this.boardMask
+    );
+
+    // =====================================================
+    // TILE VIEWS
+    // =====================================================
+
     this.tileViews =
       Array.from(
         {
@@ -339,14 +382,12 @@ export default class Match3Board {
     return {
       x:
         this.x +
-        col *
-          this.tileSize +
+        col * this.tileSize +
         this.tileSize / 2,
 
       y:
         this.y +
-        row *
-          this.tileSize +
+        row * this.tileSize +
         this.tileSize / 2
     };
   }
@@ -782,9 +823,7 @@ export default class Match3Board {
       totalMatched +=
         uniqueCells.length;
 
-      // VIGTIGT:
-      // Vi gemmer tile-typen NU,
-      // før matched tiles bliver fjernet.
+      // Gem tile-typen før tiles bliver fjernet.
       const matchesWithTypes =
         matches.map(match => {
           const firstCell =
@@ -846,9 +885,19 @@ export default class Match3Board {
     const hasValidMoves =
       this.grid.hasValidMoves();
 
+    // -------------------------
+    // GAME OVER
+    // -------------------------
+
     if (
       !hasValidMoves
     ) {
+      this.setState(
+        'GAME_OVER_FALL'
+      );
+
+      await this.playGameOverDrop();
+
       this.setState(
         'GAME_OVER'
       );
@@ -863,6 +912,7 @@ export default class Match3Board {
     ) {
       this.onMoveComplete({
         valid: true,
+
         chains:
           chainCount,
 
@@ -914,6 +964,7 @@ export default class Match3Board {
       return;
     }
 
+    // Lille pop
     await this.tween(
       targets,
       {
@@ -925,6 +976,7 @@ export default class Match3Board {
       }
     );
 
+    // Forsvind
     await this.tween(
       targets,
       {
@@ -937,6 +989,7 @@ export default class Match3Board {
       }
     );
 
+    // Destroy matched tiles
     for (
       const cell
       of cells
@@ -1145,7 +1198,7 @@ export default class Match3Board {
       animations
     );
 
-    // Reset visuals
+    // Reset visuelle properties
     for (
       let row = 0;
       row < this.rows;
@@ -1176,6 +1229,156 @@ export default class Match3Board {
         );
       }
     }
+  }
+
+  // =====================================================
+  // INITIAL DROP
+  // =====================================================
+
+  async playInitialDrop() {
+    /*
+     * Boardet låses mens tiles falder ind.
+     */
+    this.setState(
+      'FALLING'
+    );
+
+    const animations = [];
+
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const tile =
+          this.tileViews
+            [row]
+            [col];
+
+        if (
+          !tile
+        ) {
+          continue;
+        }
+
+        const target =
+          this.getCellPosition(
+            row,
+            col
+          );
+
+        /*
+         * Tiles starter fysisk over boardet.
+         *
+         * Board-masken sørger for, at de
+         * IKKE kan ses deroppe.
+         */
+        tile.y =
+          this.y -
+          this.tileSize *
+            (
+              this.rows -
+              row +
+              2
+            );
+
+        animations.push(
+          this.tween(
+            tile,
+            {
+              y:
+                target.y,
+
+              duration:
+                350 +
+                row * 35,
+
+              delay:
+                col * 25,
+
+              ease:
+                'Cubic.easeIn'
+            }
+          )
+        );
+      }
+    }
+
+    await Promise.all(
+      animations
+    );
+
+    this.setState(
+      'IDLE'
+    );
+  }
+
+  // =====================================================
+  // GAME OVER DROP
+  // =====================================================
+
+  async playGameOverDrop() {
+    const animations = [];
+
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const tile =
+          this.tileViews
+            [row]
+            [col];
+
+        if (
+          !tile
+        ) {
+          continue;
+        }
+
+        animations.push(
+          this.tween(
+            tile,
+            {
+              /*
+               * Flyt tilen langt ned.
+               *
+               * Så snart den forlader
+               * board-masken, bliver den
+               * usynlig.
+               */
+              y:
+                tile.y +
+                600,
+
+              duration:
+                450 +
+                row * 25,
+
+              delay:
+                col * 18,
+
+              ease:
+                'Cubic.easeIn'
+            }
+          )
+        );
+      }
+    }
+
+    await Promise.all(
+      animations
+    );
   }
 
   // =====================================================

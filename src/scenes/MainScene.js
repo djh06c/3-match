@@ -29,7 +29,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.load.image(
       'phone',
-      '/assets/icons/Telefon.png'
+      '/assets/icons/Telefon2.png'
     );
 
     this.load.image(
@@ -41,10 +41,26 @@ export default class MainScene extends Phaser.Scene {
       'match3Background',
       '/assets/backgrounds/Baggrund-match3-2.0.png'
     );
+
+    this.load.image(
+      'player',
+      '/assets/mobs/Bob/Bob.png'
+    );
+
+    this.load.image(
+      'Joblin',
+      '/assets/mobs/Joblin/Joblin.png'
+    );
   }
 
   create() {
     const width = this.scale.width;
+
+    // =====================================
+    // BATTLE STATE
+    // =====================================
+
+    this.battleWon = false;
 
     // =====================================
     // TOP / BATTLE AREA
@@ -68,47 +84,167 @@ export default class MainScene extends Phaser.Scene {
         fontSize: '22px',
         color: '#ffffff'
       }
-    ).setOrigin(0.5);
+    )
+      .setOrigin(0.5);
 
-    // Player placeholder
-    this.add.rectangle(
+    // =====================================
+    // PLAYER
+    // =====================================
+
+    this.player = this.add.image(
       width * 0.25,
-      155,
-      90,
-      110,
-      0x4f6fad
+      100,
+      'player'
     );
 
-    this.add.text(
-      width * 0.25,
-      155,
-      'PLAYER',
-      {
-        fontSize: '16px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
+    this.player
+      .setScale(3)
+      .setDepth(5);
 
-    // Enemy placeholder
-    this.add.rectangle(
+    // =====================================
+    // ENEMY
+    // =====================================
+
+    this.Joblin = this.add.image(
       width * 0.75,
-      155,
-      90,
-      110,
-      0x9b3d3d
+      100,
+      'Joblin'
     );
 
-    this.add.text(
-      width * 0.75,
-      155,
-      'ENEMY',
-      {
-        fontSize: '16px',
-        color: '#ffffff'
-      }
-    ).setOrigin(0.5);
+    this.Joblin
+      .setScale(3)
+      .setDepth(5);
 
-    // Skillelinje
+    // =====================================
+    // HP VALUES
+    // =====================================
+
+    this.PlayerMaxHP = 100;
+    this.PlayerHP = 100;
+
+    this.EnemyMaxHP = 100;
+    this.EnemyHP = 100;
+
+    // =====================================
+    // PLAYER NAME
+    // =====================================
+
+    this.playerNameText = this.add.text(
+      width * 0.25,
+      205,
+      'BOB',
+      {
+        fontSize: '12px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(10);
+
+    // =====================================
+    // ENEMY NAME
+    // =====================================
+
+    this.enemyNameText = this.add.text(
+      width * 0.75,
+      205,
+      'JOBLIN',
+      {
+        fontSize: '12px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(10);
+
+    // =====================================
+    // PLAYER HEALTH BAR
+    // =====================================
+
+    this.playerHpBarBackground =
+      this.add.rectangle(
+        width * 0.25,
+        224,
+        100,
+        12,
+        0x222222
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
+
+    this.playerHpBar =
+      this.add.rectangle(
+        width * 0.25 - 50,
+        224,
+        100,
+        12,
+        0x00aa00
+      )
+        .setOrigin(0, 0.5)
+        .setDepth(11);
+
+    this.playerHpText = this.add.text(
+      width * 0.25,
+      224,
+      '100 / 100',
+      {
+        fontSize: '9px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(12);
+
+    // =====================================
+    // ENEMY HEALTH BAR
+    // =====================================
+
+    this.enemyHpBarBackground =
+      this.add.rectangle(
+        width * 0.75,
+        224,
+        100,
+        12,
+        0x222222
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
+
+    this.enemyHpBar =
+      this.add.rectangle(
+        width * 0.75 - 50,
+        224,
+        100,
+        12,
+        0x00aa00
+      )
+        .setOrigin(0, 0.5)
+        .setDepth(11);
+
+    this.enemyHpText = this.add.text(
+      width * 0.75,
+      224,
+      '100 / 100',
+      {
+        fontSize: '9px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(12);
+
+    // =====================================
+    // SKILLELINJE
+    // =====================================
+
     this.add.rectangle(
       width / 2,
       this.topAreaHeight,
@@ -127,32 +263,23 @@ export default class MainScene extends Phaser.Scene {
       'match3Background'
     );
 
-    match3Background.setScale(4);
-    match3Background.setDepth(0);
+    match3Background
+      .setScale(4)
+      .setDepth(0);
 
     // =====================================
-    // MATCH HISTORY / TOP 9
+    // DAMAGE DISPLAY
     // =====================================
 
-    this.matchHistory = [];
+    this.turnDamage = 0;
+    this.damageBreakdown = [];
 
-    /*
-     * Midten af history-panelet.
-     *
-     * Hvis hele teksten senere skal
-     * lidt til højre/venstre,
-     * ændrer du kun denne værdi.
-     */
-    const historyCenterX = 704;
+    const damageCenterX = 704;
 
-    // -------------------------
-    // Titel
-    // -------------------------
-
-    this.matchHistoryTitle = this.add.text(
-      historyCenterX,
+    this.damageTitle = this.add.text(
+      damageCenterX,
       this.topAreaHeight + 60,
-      'MATCHES',
+      'DAMAGE',
       {
         fontSize: '16px',
         color: '#000000',
@@ -163,47 +290,48 @@ export default class MainScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // -------------------------
-    // 9 match-rækker
-    // -------------------------
+    // Her vises fx:
+    //
+    // 5x Kaffe x3 = 15
+    // 4x Email x2 = 8
+    // 3x Ur x1 = 3
 
-    this.matchHistoryTexts = [];
-
-    /*
-     * Hver række i pixel-art:
-     *
-     * 5 source-pixels høj
-     *
-     * Background scale = 4
-     *
-     * 5 * 4 = 20 game-pixels
-     */
-    const firstMatchY =
-      this.topAreaHeight + 86;
-
-    const matchRowSpacing = 24;
-
-    for (let i = 0; i < 9; i++) {
-      const matchText =
-        this.add.text(
-          historyCenterX,
-          firstMatchY +
-            i * matchRowSpacing,
-          '',
-          {
-            fontSize: '12px',
-            color: '#000000',
-            fontFamily: 'Arial, sans-serif',
-            fontStyle: 'bold'
+    this.damageCalculationText =
+      this.add.text(
+        damageCenterX,
+        this.topAreaHeight + 86,
+        '',
+        {
+          fontSize: '11px',
+          color: '#000000',
+          fontFamily: 'Arial, sans-serif',
+          fontStyle: 'bold',
+          align: 'center',
+          lineSpacing: 6,
+          wordWrap: {
+            width: 150
           }
-        )
-          .setOrigin(0.5)
-          .setDepth(10);
+        }
+      )
+        .setOrigin(0.5, 0)
+        .setDepth(10);
 
-      this.matchHistoryTexts.push(
-        matchText
-      );
-    }
+    // Total damage står nederst
+    this.damageTotalText =
+      this.add.text(
+        damageCenterX,
+        this.topAreaHeight + 315,
+        'TOTAL: 0',
+        {
+          fontSize: '15px',
+          color: '#000000',
+          fontFamily: 'Arial, sans-serif',
+          fontStyle: 'bold',
+          align: 'center'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
 
     // =====================================
     // STATUS
@@ -226,15 +354,9 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     const tileSize = 52;
-
-    const boardWidth =
-      8 * tileSize;
-
-    const boardX =
-      (width - boardWidth) / 2;
-
-    const boardY =
-      this.topAreaHeight + 22;
+    const boardWidth = 8 * tileSize;
+    const boardX = (width - boardWidth) / 2;
+    const boardY = this.topAreaHeight + 22;
 
     this.board = new Match3Board(
       this,
@@ -286,6 +408,9 @@ export default class MainScene extends Phaser.Scene {
     );
 
     this.board.container.setDepth(5);
+
+    // Tiles falder ind ved start
+    this.board.playInitialDrop();
   }
 
   // =====================================
@@ -318,10 +443,42 @@ export default class MainScene extends Phaser.Scene {
         );
         break;
 
+      case 'GAME_OVER_FALL':
+        this.statusText.setText('');
+        break;
+
       case 'GAME_OVER':
-        this.statusText.setText(
-          'GAME OVER'
+        this.statusText.setText('');
+
+        /*
+         * Vi venter til næste frame med
+         * GAME OVER-overlayet.
+         *
+         * Grunden er:
+         *
+         * Match3Board kan opdage et board
+         * uden moves INDEN MainScene har
+         * nået at give Joblin damage.
+         *
+         * Hvis samme move dræber Joblin,
+         * skal GAME WON have prioritet.
+         */
+        this.time.delayedCall(
+          0,
+          () => {
+            if (
+              !this.battleWon &&
+              this.EnemyHP > 0
+            ) {
+              this.showGameOver();
+            }
+          }
         );
+
+        break;
+
+      case 'GAME_WON':
+        this.statusText.setText('');
         break;
     }
   }
@@ -331,6 +488,10 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   handleMoveComplete(result) {
+    if (this.battleWon) {
+      return;
+    }
+
     if (!result.valid) {
       this.statusText.setText(
         'Ingen match - prøv igen.'
@@ -339,42 +500,82 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.addMatchesToHistory(
-      result
+    // =====================================
+    // CALCULATE DAMAGE
+    // =====================================
+
+    const damageResult =
+      this.calculateDamage(
+        result
+      );
+
+    this.turnDamage =
+      damageResult.totalDamage;
+
+    this.damageBreakdown =
+      damageResult.breakdown;
+
+    // Vis damage-regnestykket
+    this.renderDamage();
+
+    // Giv Joblin damage
+    this.damageEnemy(
+      this.turnDamage
     );
 
-    if (!result.hasValidMoves) {
-      this.statusText.setText(
-        `Chain x${result.chains} - GAME OVER`
-      );
+    // =====================================
+    // CHECK WIN
+    // =====================================
+
+    if (this.EnemyHP <= 0) {
+      this.winBattle();
 
       return;
     }
 
+    // =====================================
+    // NO MOVES
+    // =====================================
+
+    // GAME OVER håndteres af
+    // Match3Board state.
+    if (!result.hasValidMoves) {
+      return;
+    }
+
+    // =====================================
+    // STATUS
+    // =====================================
+
     if (result.chains > 1) {
       this.statusText.setText(
-        `Chain x${result.chains}! ` +
-        `${result.totalMatched} tiles fjernet.`
+        `${this.turnDamage} damage - ` +
+        `${result.chains} chains`
       );
 
       return;
     }
 
     this.statusText.setText(
-      `${result.totalMatched} tiles matchet.`
+      `${this.turnDamage} damage`
     );
 
     console.log(
       'Move result:',
       result
     );
+
+    console.log(
+      'Damage result:',
+      damageResult
+    );
   }
 
   // =====================================
-  // MATCH HISTORY
+  // DAMAGE CALCULATION
   // =====================================
 
-  addMatchesToHistory(result) {
+  calculateDamage(result) {
     const tileNames = [
       'Kaffe',
       'Email',
@@ -384,10 +585,46 @@ export default class MainScene extends Phaser.Scene {
       'Ur'
     ];
 
+    let totalDamage = 0;
+
+    const breakdown = [];
+
     for (
       const chainData
       of result.matches
     ) {
+      // =================================
+      // DAMAGE PER TILE
+      // =================================
+      //
+      // Chain 1:
+      // spillerens oprindelige match
+      // = 3 damage pr tile
+      //
+      // Chain 2:
+      // første automatiske cascade
+      // = 2 damage pr tile
+      //
+      // Chain 3+:
+      // alle senere cascades
+      // = 1 damage pr tile
+
+      let damagePerTile;
+
+      if (chainData.chain === 1) {
+        damagePerTile = 3;
+      } else if (
+        chainData.chain === 2
+      ) {
+        damagePerTile = 2;
+      } else {
+        damagePerTile = 1;
+      }
+
+      // =================================
+      // MERGE T / L / + MATCHES
+      // =================================
+
       const mergedMatches =
         this.mergeConnectedMatches(
           chainData.matches
@@ -397,12 +634,24 @@ export default class MainScene extends Phaser.Scene {
         const match
         of mergedMatches
       ) {
-        this.matchHistory.push({
+        const tileAmount =
+          match.cells.length;
+
+        const damage =
+          tileAmount *
+          damagePerTile;
+
+        totalDamage += damage;
+
+        breakdown.push({
           chain:
             chainData.chain,
 
-          amount:
-            match.cells.length,
+          tileAmount,
+
+          damagePerTile,
+
+          damage,
 
           type:
             tileNames[
@@ -412,7 +661,158 @@ export default class MainScene extends Phaser.Scene {
       }
     }
 
-    this.renderMatchHistory();
+    return {
+      totalDamage,
+      breakdown
+    };
+  }
+
+  // =====================================
+  // RENDER DAMAGE
+  // =====================================
+
+  renderDamage() {
+    if (
+      this.damageBreakdown.length === 0
+    ) {
+      this.damageCalculationText.setText(
+        ''
+      );
+
+      this.damageTotalText.setText(
+        'TOTAL: 0'
+      );
+
+      return;
+    }
+
+    const lines =
+      this.damageBreakdown.map(
+        entry => {
+          return (
+            `${entry.tileAmount}x ${entry.type}` +
+            ` x${entry.damagePerTile}` +
+            ` = ${entry.damage}`
+          );
+        }
+      );
+
+    this.damageCalculationText.setText(
+      lines.join('\n')
+    );
+
+    this.damageTotalText.setText(
+      `TOTAL: ${this.turnDamage}`
+    );
+  }
+
+  // =====================================
+  // WIN BATTLE
+  // =====================================
+
+  winBattle() {
+    if (this.battleWon) {
+      return;
+    }
+
+    this.battleWon = true;
+
+    // Fjern et eventuelt GAME OVER-overlay,
+    // hvis boardet samtidig løb tør for moves.
+    if (this.gameOverText) {
+      this.gameOverText.destroy();
+      this.gameOverText = null;
+    }
+
+    // Sæt boardet i en ikke-IDLE state,
+    // så spilleren ikke kan fortsætte
+    // med at lave moves.
+    if (
+      this.board &&
+      this.board.setState
+    ) {
+      this.board.setState(
+        'GAME_WON'
+      );
+    } else if (this.board) {
+      this.board.state =
+        'GAME_WON';
+    }
+
+    this.statusText.setText('');
+
+    this.showGameWon();
+  }
+
+  // =====================================
+  // GAME WON
+  // =====================================
+
+  showGameWon() {
+    if (this.gameWonText) {
+      return;
+    }
+
+    const boardCenterX =
+      this.scale.width / 2;
+
+    const boardCenterY =
+      this.topAreaHeight +
+      22 +
+      (8 * 52) / 2;
+
+    this.gameWonText = this.add.text(
+      boardCenterX,
+      boardCenterY,
+      'GAME WON',
+      {
+        fontSize: '42px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(20);
+  }
+
+  // =====================================
+  // GAME OVER
+  // =====================================
+
+  showGameOver() {
+    if (
+      this.gameOverText ||
+      this.battleWon
+    ) {
+      return;
+    }
+
+    const boardCenterX =
+      this.scale.width / 2;
+
+    const boardCenterY =
+      this.topAreaHeight +
+      22 +
+      (8 * 52) / 2;
+
+    this.gameOverText = this.add.text(
+      boardCenterX,
+      boardCenterY,
+      'GAME OVER',
+      {
+        fontSize: '42px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 6
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(20);
   }
 
   // =====================================
@@ -561,73 +961,70 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // RENDER TOP 9 MATCHES
+  // HEALTH
   // =====================================
 
-  renderMatchHistory() {
-    /*
-     * Største match først.
-     *
-     * Hvis to matches har samme størrelse,
-     * kommer højeste chain først.
-     *
-     * Kun top 9 vises.
-     */
-    const topMatches =
-      this.matchHistory
-        .slice()
-        .sort(
-          (a, b) => {
-            if (
-              b.amount !==
-              a.amount
-            ) {
-              return (
-                b.amount -
-                a.amount
-              );
-            }
-
-            return (
-              b.chain -
-              a.chain
-            );
-          }
-        )
-        .slice(
-          0,
-          9
-        );
-
-    for (
-      let i = 0;
-      i < this.matchHistoryTexts.length;
-      i++
-    ) {
-      const textObject =
-        this.matchHistoryTexts[i];
-
-      const match =
-        topMatches[i];
-
-      if (!match) {
-        textObject.setText('');
-        continue;
-      }
-
-      textObject.setText(
-        `${match.amount}x ${match.type}`
+  updateEnemyHealthBar() {
+    // Sikrer at HP aldrig kan være
+    // under 0 eller over max HP.
+    this.EnemyHP =
+      Phaser.Math.Clamp(
+        this.EnemyHP,
+        0,
+        this.EnemyMaxHP
       );
-    }
+
+    const hpPercent =
+      this.EnemyHP /
+      this.EnemyMaxHP;
+
+    this.enemyHpBar.displayWidth =
+      100 * hpPercent;
+
+    this.enemyHpText.setText(
+      `${this.EnemyHP} / ${this.EnemyMaxHP}`
+    );
   }
 
-  // =====================================
-  // CLEAR HISTORY
-  // =====================================
+  updatePlayerHealthBar() {
+    // Sikrer at HP aldrig kan være
+    // under 0 eller over max HP.
+    this.PlayerHP =
+      Phaser.Math.Clamp(
+        this.PlayerHP,
+        0,
+        this.PlayerMaxHP
+      );
 
-  clearMatchHistory() {
-    this.matchHistory = [];
+    const hpPercent =
+      this.PlayerHP /
+      this.PlayerMaxHP;
 
-    this.renderMatchHistory();
+    this.playerHpBar.displayWidth =
+      100 * hpPercent;
+
+    this.playerHpText.setText(
+      `${this.PlayerHP} / ${this.PlayerMaxHP}`
+    );
+  }
+
+  damageEnemy(amount) {
+    this.EnemyHP =
+      Math.max(
+        0,
+        this.EnemyHP - amount
+      );
+
+    this.updateEnemyHealthBar();
+  }
+
+  damagePlayer(amount) {
+    this.PlayerHP =
+      Math.max(
+        0,
+        this.PlayerHP - amount
+      );
+
+    this.updatePlayerHealthBar();
   }
 }

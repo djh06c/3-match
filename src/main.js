@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import MainScene from './scenes/MainScene.js';
+import MainMenuScene from './scenes/MainMenuScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -8,7 +9,16 @@ const config = {
   height: 700,
   backgroundColor: '#222222',
   pixelArt: true,
-  scene: [MainScene]
+  scale: {
+    mode: Phaser.Scale.NONE,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  scene: [
+    MainMenuScene,
+    MainScene
+  ]
 };
+
+
 
 new Phaser.Game(config);
