@@ -39,7 +39,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.load.image(
       'match3Background',
-      '/assets/backgrounds/Baggrund-match3.png'
+      '/assets/backgrounds/Baggrund-match3-2.0.png'
     );
   }
 
@@ -131,6 +131,81 @@ export default class MainScene extends Phaser.Scene {
     match3Background.setDepth(0);
 
     // =====================================
+    // MATCH HISTORY / TOP 9
+    // =====================================
+
+    this.matchHistory = [];
+
+    /*
+     * Midten af history-panelet.
+     *
+     * Hvis hele teksten senere skal
+     * lidt til højre/venstre,
+     * ændrer du kun denne værdi.
+     */
+    const historyCenterX = 704;
+
+    // -------------------------
+    // Titel
+    // -------------------------
+
+    this.matchHistoryTitle = this.add.text(
+      historyCenterX,
+      this.topAreaHeight + 60,
+      'MATCHES',
+      {
+        fontSize: '16px',
+        color: '#000000',
+        fontFamily: 'Arial, sans-serif',
+        fontStyle: 'bold'
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(10);
+
+    // -------------------------
+    // 9 match-rækker
+    // -------------------------
+
+    this.matchHistoryTexts = [];
+
+    /*
+     * Hver række i pixel-art:
+     *
+     * 5 source-pixels høj
+     *
+     * Background scale = 4
+     *
+     * 5 * 4 = 20 game-pixels
+     */
+    const firstMatchY =
+      this.topAreaHeight + 86;
+
+    const matchRowSpacing = 24;
+
+    for (let i = 0; i < 9; i++) {
+      const matchText =
+        this.add.text(
+          historyCenterX,
+          firstMatchY +
+            i * matchRowSpacing,
+          '',
+          {
+            fontSize: '12px',
+            color: '#000000',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
+          }
+        )
+          .setOrigin(0.5)
+          .setDepth(10);
+
+      this.matchHistoryTexts.push(
+        matchText
+      );
+    }
+
+    // =====================================
     // STATUS
     // =====================================
 
@@ -143,8 +218,8 @@ export default class MainScene extends Phaser.Scene {
         color: '#ffff88'
       }
     )
-    .setOrigin(0.5)
-    .setDepth(10);
+      .setOrigin(0.5)
+      .setDepth(10);
 
     // =====================================
     // BOARD
@@ -158,9 +233,6 @@ export default class MainScene extends Phaser.Scene {
     const boardX =
       (width - boardWidth) / 2;
 
-    // Matcher din 200x115 baggrund:
-    // 5 source-pixels fra toppen = 20 game-pixels
-    // + lidt centrering inde i den sorte box
     const boardY =
       this.topAreaHeight + 22;
 
@@ -213,7 +285,6 @@ export default class MainScene extends Phaser.Scene {
       }
     );
 
-    // Sørg for at boardet ligger ovenpå baggrunden
     this.board.container.setDepth(5);
   }
 
@@ -268,6 +339,10 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    this.addMatchesToHistory(
+      result
+    );
+
     if (!result.hasValidMoves) {
       this.statusText.setText(
         `Chain x${result.chains} - GAME OVER`
@@ -293,5 +368,266 @@ export default class MainScene extends Phaser.Scene {
       'Move result:',
       result
     );
+  }
+
+  // =====================================
+  // MATCH HISTORY
+  // =====================================
+
+  addMatchesToHistory(result) {
+    const tileNames = [
+      'Kaffe',
+      'Email',
+      'Laptop',
+      'Notesbog',
+      'Telefon',
+      'Ur'
+    ];
+
+    for (
+      const chainData
+      of result.matches
+    ) {
+      const mergedMatches =
+        this.mergeConnectedMatches(
+          chainData.matches
+        );
+
+      for (
+        const match
+        of mergedMatches
+      ) {
+        this.matchHistory.push({
+          chain:
+            chainData.chain,
+
+          amount:
+            match.cells.length,
+
+          type:
+            tileNames[
+              match.tileValue
+            ] ?? 'Ukendt'
+        });
+      }
+    }
+
+    this.renderMatchHistory();
+  }
+
+  // =====================================
+  // MERGE OVERLAPPING MATCHES
+  // =====================================
+
+  mergeConnectedMatches(matches) {
+    const groups = [];
+
+    for (
+      const match
+      of matches
+    ) {
+      const cellKeys =
+        new Set(
+          match.cells.map(
+            cell =>
+              `${cell.row},${cell.col}`
+          )
+        );
+
+      const overlappingGroups =
+        groups.filter(
+          group =>
+            group.tileValue ===
+              match.tileValue &&
+            this.setsOverlap(
+              group.cellKeys,
+              cellKeys
+            )
+        );
+
+      if (
+        overlappingGroups.length === 0
+      ) {
+        groups.push({
+          tileValue:
+            match.tileValue,
+
+          cellKeys:
+            new Set(
+              cellKeys
+            )
+        });
+
+        continue;
+      }
+
+      const mainGroup =
+        overlappingGroups[0];
+
+      for (
+        const key
+        of cellKeys
+      ) {
+        mainGroup.cellKeys.add(
+          key
+        );
+      }
+
+      for (
+        let i = 1;
+        i < overlappingGroups.length;
+        i++
+      ) {
+        const extraGroup =
+          overlappingGroups[i];
+
+        for (
+          const key
+          of extraGroup.cellKeys
+        ) {
+          mainGroup.cellKeys.add(
+            key
+          );
+        }
+
+        const index =
+          groups.indexOf(
+            extraGroup
+          );
+
+        if (
+          index !== -1
+        ) {
+          groups.splice(
+            index,
+            1
+          );
+        }
+      }
+    }
+
+    return groups.map(
+      group => {
+        const cells =
+          Array.from(
+            group.cellKeys
+          ).map(key => {
+            const [
+              row,
+              col
+            ] =
+              key
+                .split(',')
+                .map(Number);
+
+            return {
+              row,
+              col
+            };
+          });
+
+        return {
+          tileValue:
+            group.tileValue,
+
+          cells
+        };
+      }
+    );
+  }
+
+  // =====================================
+  // CHECK SET OVERLAP
+  // =====================================
+
+  setsOverlap(
+    firstSet,
+    secondSet
+  ) {
+    for (
+      const value
+      of firstSet
+    ) {
+      if (
+        secondSet.has(
+          value
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // =====================================
+  // RENDER TOP 9 MATCHES
+  // =====================================
+
+  renderMatchHistory() {
+    /*
+     * Største match først.
+     *
+     * Hvis to matches har samme størrelse,
+     * kommer højeste chain først.
+     *
+     * Kun top 9 vises.
+     */
+    const topMatches =
+      this.matchHistory
+        .slice()
+        .sort(
+          (a, b) => {
+            if (
+              b.amount !==
+              a.amount
+            ) {
+              return (
+                b.amount -
+                a.amount
+              );
+            }
+
+            return (
+              b.chain -
+              a.chain
+            );
+          }
+        )
+        .slice(
+          0,
+          9
+        );
+
+    for (
+      let i = 0;
+      i < this.matchHistoryTexts.length;
+      i++
+    ) {
+      const textObject =
+        this.matchHistoryTexts[i];
+
+      const match =
+        topMatches[i];
+
+      if (!match) {
+        textObject.setText('');
+        continue;
+      }
+
+      textObject.setText(
+        `${match.amount}x ${match.type}`
+      );
+    }
+  }
+
+  // =====================================
+  // CLEAR HISTORY
+  // =====================================
+
+  clearMatchHistory() {
+    this.matchHistory = [];
+
+    this.renderMatchHistory();
   }
 }
