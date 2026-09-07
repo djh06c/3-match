@@ -7,6 +7,10 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
+    // =====================================
+    // MATCH-3 ICONS
+    // =====================================
+
     this.load.image(
       'coffee',
       '/assets/icons/Kaffe.png'
@@ -37,19 +41,50 @@ export default class MainScene extends Phaser.Scene {
       '/assets/icons/Ur.png'
     );
 
+    // =====================================
+    // BACKGROUND
+    // =====================================
+
     this.load.image(
       'match3Background',
       '/assets/backgrounds/Baggrund-match3-2.0.png'
     );
+
+    // =====================================
+    // PLAYER
+    // =====================================
 
     this.load.image(
       'player',
       '/assets/mobs/Bob/Bob.png'
     );
 
+    // =====================================
+    // JOBLIN
+    // =====================================
+
+    // Originalt billede.
+    // Beholdes stadig til evt. senere brug.
     this.load.image(
       'Joblin',
       '/assets/mobs/Joblin/Joblin.png'
+    );
+
+    // Idle spritesheet:
+    // 2 frames ved siden af hinanden.
+    this.load.spritesheet(
+      'JoblinIdle',
+      '/assets/mobs/Joblin/JoblinIdle.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
+    );
+
+    // Damage pose
+    this.load.image(
+      'JoblinTakeDMG',
+      '/assets/mobs/Joblin/JoblinTakeDMG.png'
     );
   }
 
@@ -61,6 +96,9 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     this.battleWon = false;
+
+    // Bruges til damage-animationen.
+    this.enemyHitTimer = null;
 
     // =====================================
     // TOP / BATTLE AREA
@@ -102,18 +140,82 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(5);
 
     // =====================================
+    // JOBLIN IDLE ANIMATION
+    // =====================================
+
+    /*
+     * Phaser animationer ligger i den
+     * globale Animation Manager.
+     *
+     * Derfor tjekker vi først, om
+     * animationen allerede eksisterer.
+     */
+    if (
+      !this.anims.exists(
+        'joblin-idle'
+      )
+    ) {
+      this.anims.create({
+        key: 'joblin-idle',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'JoblinIdle',
+            {
+              start: 0,
+              end: 1
+            }
+          ),
+
+        /*
+         * 1 frame pr. sekund.
+         *
+         * Frame 0 -> frame 1
+         * -> frame 0 osv.
+         */
+        frameRate: 2,
+
+        // Loop for evigt
+        repeat: -1
+      });
+    }
+
+    // =====================================
     // ENEMY
     // =====================================
 
-    this.Joblin = this.add.image(
+    /*
+     * VIGTIGT:
+     *
+     * Joblin er nu en SPRITE og ikke
+     * længere et IMAGE.
+     *
+     * Det gør, at han kan bruge
+     * Phaser-animationer.
+     */
+    this.Joblin = this.add.sprite(
       width * 0.75,
       100,
-      'Joblin'
+      'JoblinIdle',
+      0
     );
 
     this.Joblin
       .setScale(3)
       .setDepth(5);
+
+    // Gem hans normale position.
+    // Bruges når han shakes.
+    this.enemyBaseX =
+      this.Joblin.x;
+
+    this.enemyBaseY =
+      this.Joblin.y;
+
+    // Start idle-animationen
+    this.Joblin.play(
+      'joblin-idle'
+    );
 
     // =====================================
     // HP VALUES
@@ -257,11 +359,12 @@ export default class MainScene extends Phaser.Scene {
     // MATCH-3 BACKGROUND
     // =====================================
 
-    const match3Background = this.add.image(
-      width / 2,
-      this.topAreaHeight + 230,
-      'match3Background'
-    );
+    const match3Background =
+      this.add.image(
+        width / 2,
+        this.topAreaHeight + 230,
+        'match3Background'
+      );
 
     match3Background
       .setScale(4)
@@ -290,12 +393,6 @@ export default class MainScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // Her vises fx:
-    //
-    // 5x Kaffe x3 = 15
-    // 4x Email x2 = 8
-    // 3x Ur x1 = 3
-
     this.damageCalculationText =
       this.add.text(
         damageCenterX,
@@ -304,10 +401,12 @@ export default class MainScene extends Phaser.Scene {
         {
           fontSize: '11px',
           color: '#000000',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily:
+            'Arial, sans-serif',
           fontStyle: 'bold',
           align: 'center',
           lineSpacing: 6,
+
           wordWrap: {
             width: 150
           }
@@ -316,7 +415,6 @@ export default class MainScene extends Phaser.Scene {
         .setOrigin(0.5, 0)
         .setDepth(10);
 
-    // Total damage står nederst
     this.damageTotalText =
       this.add.text(
         damageCenterX,
@@ -325,7 +423,8 @@ export default class MainScene extends Phaser.Scene {
         {
           fontSize: '15px',
           color: '#000000',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily:
+            'Arial, sans-serif',
           fontStyle: 'bold',
           align: 'center'
         }
@@ -354,9 +453,15 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     const tileSize = 52;
-    const boardWidth = 8 * tileSize;
-    const boardX = (width - boardWidth) / 2;
-    const boardY = this.topAreaHeight + 22;
+
+    const boardWidth =
+      8 * tileSize;
+
+    const boardX =
+      (width - boardWidth) / 2;
+
+    const boardY =
+      this.topAreaHeight + 22;
 
     this.board = new Match3Board(
       this,
@@ -407,7 +512,8 @@ export default class MainScene extends Phaser.Scene {
       }
     );
 
-    this.board.container.setDepth(5);
+    this.board.container
+      .setDepth(5);
 
     // Tiles falder ind ved start
     this.board.playInitialDrop();
@@ -450,19 +556,6 @@ export default class MainScene extends Phaser.Scene {
       case 'GAME_OVER':
         this.statusText.setText('');
 
-        /*
-         * Vi venter til næste frame med
-         * GAME OVER-overlayet.
-         *
-         * Grunden er:
-         *
-         * Match3Board kan opdage et board
-         * uden moves INDEN MainScene har
-         * nået at give Joblin damage.
-         *
-         * Hvis samme move dræber Joblin,
-         * skal GAME WON have prioritet.
-         */
         this.time.delayedCall(
           0,
           () => {
@@ -515,10 +608,12 @@ export default class MainScene extends Phaser.Scene {
     this.damageBreakdown =
       damageResult.breakdown;
 
-    // Vis damage-regnestykket
     this.renderDamage();
 
-    // Giv Joblin damage
+    // =====================================
+    // DAMAGE JOBLIN
+    // =====================================
+
     this.damageEnemy(
       this.turnDamage
     );
@@ -537,8 +632,6 @@ export default class MainScene extends Phaser.Scene {
     // NO MOVES
     // =====================================
 
-    // GAME OVER håndteres af
-    // Match3Board state.
     if (!result.hasValidMoves) {
       return;
     }
@@ -593,25 +686,22 @@ export default class MainScene extends Phaser.Scene {
       const chainData
       of result.matches
     ) {
-      // =================================
-      // DAMAGE PER TILE
-      // =================================
-      //
-      // Chain 1:
-      // spillerens oprindelige match
-      // = 3 damage pr tile
-      //
-      // Chain 2:
-      // første automatiske cascade
-      // = 2 damage pr tile
-      //
-      // Chain 3+:
-      // alle senere cascades
-      // = 1 damage pr tile
-
       let damagePerTile;
 
-      if (chainData.chain === 1) {
+      /*
+       * Chain 1:
+       * 3 damage pr tile
+       *
+       * Chain 2:
+       * 2 damage pr tile
+       *
+       * Chain 3+:
+       * 1 damage pr tile
+       */
+
+      if (
+        chainData.chain === 1
+      ) {
         damagePerTile = 3;
       } else if (
         chainData.chain === 2
@@ -620,10 +710,6 @@ export default class MainScene extends Phaser.Scene {
       } else {
         damagePerTile = 1;
       }
-
-      // =================================
-      // MERGE T / L / + MATCHES
-      // =================================
 
       const mergedMatches =
         this.mergeConnectedMatches(
@@ -641,7 +727,8 @@ export default class MainScene extends Phaser.Scene {
           tileAmount *
           damagePerTile;
 
-        totalDamage += damage;
+        totalDamage +=
+          damage;
 
         breakdown.push({
           chain:
@@ -675,13 +762,11 @@ export default class MainScene extends Phaser.Scene {
     if (
       this.damageBreakdown.length === 0
     ) {
-      this.damageCalculationText.setText(
-        ''
-      );
+      this.damageCalculationText
+        .setText('');
 
-      this.damageTotalText.setText(
-        'TOTAL: 0'
-      );
+      this.damageTotalText
+        .setText('TOTAL: 0');
 
       return;
     }
@@ -690,20 +775,207 @@ export default class MainScene extends Phaser.Scene {
       this.damageBreakdown.map(
         entry => {
           return (
-            `${entry.tileAmount}x ${entry.type}` +
+            `${entry.tileAmount}x ` +
+            `${entry.type}` +
             ` x${entry.damagePerTile}` +
             ` = ${entry.damage}`
           );
         }
       );
 
-    this.damageCalculationText.setText(
-      lines.join('\n')
+    this.damageCalculationText
+      .setText(
+        lines.join('\n')
+      );
+
+    this.damageTotalText
+      .setText(
+        `TOTAL: ${this.turnDamage}`
+      );
+  }
+
+  // =====================================
+  // JOBLIN DAMAGE ANIMATION
+  // =====================================
+
+  playEnemyHitAnimation() {
+    if (!this.Joblin) {
+      return;
+    }
+
+    /*
+     * Hvis en tidligere damage timer
+     * stadig eksisterer, fjernes den.
+     *
+     * Så undgår vi at en gammel timer
+     * pludselig starter idle-animationen
+     * midt i et nyt hit.
+     */
+    if (this.enemyHitTimer) {
+      this.enemyHitTimer.remove();
+
+      this.enemyHitTimer = null;
+    }
+
+    /*
+     * Stop eventuelle gamle tweens
+     * på Joblin.
+     */
+    this.tweens.killTweensOf(
+      this.Joblin
     );
 
-    this.damageTotalText.setText(
-      `TOTAL: ${this.turnDamage}`
+    /*
+     * Sørg for at han starter
+     * shake fra sin normale position.
+     */
+    this.Joblin.x =
+      this.enemyBaseX;
+
+    this.Joblin.y =
+      this.enemyBaseY;
+
+    // Stop idle animation
+    this.Joblin.stop();
+
+    // Skift til damage-frame
+    this.Joblin.setTexture(
+      'JoblinTakeDMG'
     );
+
+    // =================================
+    // JOBLIN SHAKE
+    // =================================
+
+    this.tweens.add({
+      targets: this.Joblin,
+
+      x:
+        this.enemyBaseX + 8,
+
+      duration: 55,
+
+      yoyo: true,
+
+      repeat: 4,
+
+      ease: 'Linear',
+
+      onComplete: () => {
+        this.Joblin.x =
+          this.enemyBaseX;
+      }
+    });
+
+    // =================================
+    // SMALL SCREEN SHAKE
+    // =================================
+
+    /*
+     * duration = 120 ms
+     * intensity = meget lille shake
+     *
+     * Hvis du vil have kraftigere shake,
+     * kan du fx prøve 0.006.
+     */
+    this.cameras.main.shake(
+      120,
+      0.003
+    );
+
+    // =================================
+    // RETURN TO IDLE AFTER 2 SECONDS
+    // =================================
+
+    this.enemyHitTimer =
+      this.time.delayedCall(
+        1000,
+        () => {
+          this.enemyHitTimer = null;
+
+          /*
+           * Hvis Joblin er død,
+           * må idle IKKE starte igen.
+           */
+          if (
+            this.EnemyHP <= 0 ||
+            this.battleWon
+          ) {
+            return;
+          }
+
+          this.Joblin.setTexture(
+            'JoblinIdle',
+            0
+          );
+
+          this.Joblin.play(
+            'joblin-idle'
+          );
+        }
+      );
+  }
+
+  // =====================================
+  // DAMAGE NUMBER ANIMATION
+  // =====================================
+
+  showEnemyDamageNumber(amount) {
+    const damageText =
+      this.add.text(
+        this.Joblin.x,
+        this.Joblin.y,
+        `-${amount}`,
+        {
+          fontSize: '24px',
+          color: '#ff4444',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 4
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(30);
+
+    // Først popper tallet op
+    this.tweens.add({
+      targets: damageText,
+
+      y:
+        damageText.y - 35,
+
+      scaleX: 1.25,
+      scaleY: 1.25,
+
+      duration: 180,
+
+      ease: 'Back.Out',
+
+      onComplete: () => {
+        // Derefter falder det ned
+        // og fader væk.
+        this.tweens.add({
+          targets: damageText,
+
+          y:
+            damageText.y + 55,
+
+          alpha: 0,
+
+          scaleX: 0.9,
+          scaleY: 0.9,
+
+          duration: 500,
+
+          ease: 'Quad.In',
+
+          onComplete: () => {
+            damageText.destroy();
+          }
+        });
+      }
+    });
   }
 
   // =====================================
@@ -717,16 +989,26 @@ export default class MainScene extends Phaser.Scene {
 
     this.battleWon = true;
 
-    // Fjern et eventuelt GAME OVER-overlay,
-    // hvis boardet samtidig løb tør for moves.
+    /*
+     * Hvis en timer var ved at
+     * skifte Joblin tilbage til idle,
+     * fjernes den.
+     */
+    if (this.enemyHitTimer) {
+      this.enemyHitTimer.remove();
+
+      this.enemyHitTimer = null;
+    }
+
     if (this.gameOverText) {
       this.gameOverText.destroy();
+
       this.gameOverText = null;
     }
 
-    // Sæt boardet i en ikke-IDLE state,
-    // så spilleren ikke kan fortsætte
-    // med at lave moves.
+    /*
+     * Stop board-input.
+     */
     if (
       this.board &&
       this.board.setState
@@ -734,13 +1016,22 @@ export default class MainScene extends Phaser.Scene {
       this.board.setState(
         'GAME_WON'
       );
-    } else if (this.board) {
+    } else if (
+      this.board
+    ) {
       this.board.state =
         'GAME_WON';
     }
 
     this.statusText.setText('');
 
+    /*
+     * Lige nu bliver Joblin stående
+     * på sin TakeDMG-frame.
+     *
+     * Her kan vi senere sætte den
+     * rigtige death-animation ind.
+     */
     this.showGameWon();
   }
 
@@ -761,21 +1052,22 @@ export default class MainScene extends Phaser.Scene {
       22 +
       (8 * 52) / 2;
 
-    this.gameWonText = this.add.text(
-      boardCenterX,
-      boardCenterY,
-      'GAME WON',
-      {
-        fontSize: '42px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 6
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(20);
+    this.gameWonText =
+      this.add.text(
+        boardCenterX,
+        boardCenterY,
+        'GAME WON',
+        {
+          fontSize: '42px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 6
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(20);
   }
 
   // =====================================
@@ -798,21 +1090,22 @@ export default class MainScene extends Phaser.Scene {
       22 +
       (8 * 52) / 2;
 
-    this.gameOverText = this.add.text(
-      boardCenterX,
-      boardCenterY,
-      'GAME OVER',
-      {
-        fontSize: '42px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold',
-        stroke: '#000000',
-        strokeThickness: 6
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(20);
+    this.gameOverText =
+      this.add.text(
+        boardCenterX,
+        boardCenterY,
+        'GAME OVER',
+        {
+          fontSize: '42px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 6
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(20);
   }
 
   // =====================================
@@ -875,7 +1168,8 @@ export default class MainScene extends Phaser.Scene {
 
       for (
         let i = 1;
-        i < overlappingGroups.length;
+        i <
+        overlappingGroups.length;
         i++
       ) {
         const extraGroup =
@@ -911,20 +1205,22 @@ export default class MainScene extends Phaser.Scene {
         const cells =
           Array.from(
             group.cellKeys
-          ).map(key => {
-            const [
-              row,
-              col
-            ] =
-              key
-                .split(',')
-                .map(Number);
+          ).map(
+            key => {
+              const [
+                row,
+                col
+              ] =
+                key
+                  .split(',')
+                  .map(Number);
 
-            return {
-              row,
-              col
-            };
-          });
+              return {
+                row,
+                col
+              };
+            }
+          );
 
         return {
           tileValue:
@@ -965,8 +1261,6 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   updateEnemyHealthBar() {
-    // Sikrer at HP aldrig kan være
-    // under 0 eller over max HP.
     this.EnemyHP =
       Phaser.Math.Clamp(
         this.EnemyHP,
@@ -987,8 +1281,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   updatePlayerHealthBar() {
-    // Sikrer at HP aldrig kan være
-    // under 0 eller over max HP.
     this.PlayerHP =
       Phaser.Math.Clamp(
         this.PlayerHP,
@@ -1008,7 +1300,15 @@ export default class MainScene extends Phaser.Scene {
     );
   }
 
+  // =====================================
+  // DAMAGE ENEMY
+  // =====================================
+
   damageEnemy(amount) {
+    if (amount <= 0) {
+      return;
+    }
+
     this.EnemyHP =
       Math.max(
         0,
@@ -1016,7 +1316,19 @@ export default class MainScene extends Phaser.Scene {
       );
 
     this.updateEnemyHealthBar();
+
+    // Floating damage number
+    this.showEnemyDamageNumber(
+      amount
+    );
+
+    // Damage pose + shake
+    this.playEnemyHitAnimation();
   }
+
+  // =====================================
+  // DAMAGE PLAYER
+  // =====================================
 
   damagePlayer(amount) {
     this.PlayerHP =
