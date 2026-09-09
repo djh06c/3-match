@@ -63,15 +63,11 @@ export default class MainScene extends Phaser.Scene {
     // JOBLIN
     // =====================================
 
-    // Originalt billede.
-    // Beholdes stadig til evt. senere brug.
     this.load.image(
       'Joblin',
       '/assets/mobs/Joblin/Joblin.png'
     );
 
-    // Idle spritesheet:
-    // 2 frames ved siden af hinanden.
     this.load.spritesheet(
       'JoblinIdle',
       '/assets/mobs/Joblin/JoblinIdle.png',
@@ -81,10 +77,18 @@ export default class MainScene extends Phaser.Scene {
       }
     );
 
-    // Damage pose
     this.load.image(
       'JoblinTakeDMG',
       '/assets/mobs/Joblin/JoblinTakeDMG.png'
+    );
+
+    this.load.spritesheet(
+      'JoblinDealDMG',
+      '/assets/mobs/Joblin/JoblinDealDMG.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
     );
   }
 
@@ -96,9 +100,32 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     this.battleWon = false;
+    this.battleLost = false;
 
-    // Bruges til damage-animationen.
+    this.playerMoveCount = 0;
+    this.enemyAttackCount = 0;
+    this.enemyTurnActive = false;
+
+    this.enemyHitDuration = 1000;
+    this.enemySpeechDuration = 1200;
+
     this.enemyHitTimer = null;
+    this.joblinSpeechBubble = null;
+
+    // =====================================
+    // JOBLIN QUOTES
+    // =====================================
+
+    this.joblinQuotes = [
+      'Har du søgt bredt nok?',
+      'Har du opdateret dit CV?',
+      'Du skal være mere fleksibel.',
+      'Har du prøvet at netværke?',
+      'Du skal sende flere ansøgninger.',
+      'Vi skal lige tale om din indsats.'
+    ];
+
+    this.joblinQuoteIndex = 0;
 
     // =====================================
     // TOP / BATTLE AREA
@@ -139,17 +166,13 @@ export default class MainScene extends Phaser.Scene {
       .setScale(3)
       .setDepth(5);
 
+    this.playerBaseX = this.player.x;
+    this.playerBaseY = this.player.y;
+
     // =====================================
-    // JOBLIN IDLE ANIMATION
+    // JOBLIN ANIMATIONS
     // =====================================
 
-    /*
-     * Phaser animationer ligger i den
-     * globale Animation Manager.
-     *
-     * Derfor tjekker vi først, om
-     * animationen allerede eksisterer.
-     */
     if (
       !this.anims.exists(
         'joblin-idle'
@@ -167,16 +190,32 @@ export default class MainScene extends Phaser.Scene {
             }
           ),
 
-        /*
-         * 1 frame pr. sekund.
-         *
-         * Frame 0 -> frame 1
-         * -> frame 0 osv.
-         */
         frameRate: 2,
 
-        // Loop for evigt
         repeat: -1
+      });
+    }
+
+    if (
+      !this.anims.exists(
+        'joblin-attack'
+      )
+    ) {
+      this.anims.create({
+        key: 'joblin-attack',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'JoblinDealDMG',
+            {
+              start: 0,
+              end: 15
+            }
+          ),
+
+        frameRate: 10,
+
+        repeat: 0
       });
     }
 
@@ -184,15 +223,6 @@ export default class MainScene extends Phaser.Scene {
     // ENEMY
     // =====================================
 
-    /*
-     * VIGTIGT:
-     *
-     * Joblin er nu en SPRITE og ikke
-     * længere et IMAGE.
-     *
-     * Det gør, at han kan bruge
-     * Phaser-animationer.
-     */
     this.Joblin = this.add.sprite(
       width * 0.75,
       100,
@@ -204,21 +234,18 @@ export default class MainScene extends Phaser.Scene {
       .setScale(3)
       .setDepth(5);
 
-    // Gem hans normale position.
-    // Bruges når han shakes.
     this.enemyBaseX =
       this.Joblin.x;
 
     this.enemyBaseY =
       this.Joblin.y;
 
-    // Start idle-animationen
     this.Joblin.play(
       'joblin-idle'
     );
 
     // =====================================
-    // HP VALUES
+    // HP / MORALE VALUES
     // =====================================
 
     this.PlayerMaxHP = 100;
@@ -264,7 +291,7 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(10);
 
     // =====================================
-    // PLAYER HEALTH BAR
+    // PLAYER HEALTH / MORALE BAR
     // =====================================
 
     this.playerHpBarBackground =
@@ -515,7 +542,6 @@ export default class MainScene extends Phaser.Scene {
     this.board.container
       .setDepth(5);
 
-    // Tiles falder ind ved start
     this.board.playInitialDrop();
   }
 
@@ -549,6 +575,12 @@ export default class MainScene extends Phaser.Scene {
         );
         break;
 
+      case 'ENEMY_TURN':
+        this.statusText.setText(
+          'Joblins tur...'
+        );
+        break;
+
       case 'GAME_OVER_FALL':
         this.statusText.setText('');
         break;
@@ -561,6 +593,7 @@ export default class MainScene extends Phaser.Scene {
           () => {
             if (
               !this.battleWon &&
+              !this.battleLost &&
               this.EnemyHP > 0
             ) {
               this.showGameOver();
@@ -581,7 +614,11 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   handleMoveComplete(result) {
-    if (this.battleWon) {
+    if (
+      this.battleWon ||
+      this.battleLost ||
+      this.enemyTurnActive
+    ) {
       return;
     }
 
@@ -592,10 +629,6 @@ export default class MainScene extends Phaser.Scene {
 
       return;
     }
-
-    // =====================================
-    // CALCULATE DAMAGE
-    // =====================================
 
     const damageResult =
       this.calculateDamage(
@@ -610,17 +643,9 @@ export default class MainScene extends Phaser.Scene {
 
     this.renderDamage();
 
-    // =====================================
-    // DAMAGE JOBLIN
-    // =====================================
-
     this.damageEnemy(
       this.turnDamage
     );
-
-    // =====================================
-    // CHECK WIN
-    // =====================================
 
     if (this.EnemyHP <= 0) {
       this.winBattle();
@@ -628,17 +653,46 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    // =====================================
-    // NO MOVES
-    // =====================================
-
     if (!result.hasValidMoves) {
       return;
     }
 
-    // =====================================
-    // STATUS
-    // =====================================
+    this.playerMoveCount++;
+
+    if (this.playerMoveCount >= 3) {
+      this.playerMoveCount = 0;
+
+      this.enemyTurnActive = true;
+
+      if (
+        this.board &&
+        this.board.setState
+      ) {
+        this.board.setState(
+          'ENEMY_TURN'
+        );
+      }
+
+      this.statusText.setText(
+        'Joblin gør sig klar...'
+      );
+
+      this.time.delayedCall(
+        this.enemyHitDuration,
+        () => {
+          if (
+            this.battleWon ||
+            this.battleLost
+          ) {
+            return;
+          }
+
+          this.startEnemyTurn();
+        }
+      );
+
+      return;
+    }
 
     if (result.chains > 1) {
       this.statusText.setText(
@@ -651,16 +705,6 @@ export default class MainScene extends Phaser.Scene {
 
     this.statusText.setText(
       `${this.turnDamage} damage`
-    );
-
-    console.log(
-      'Move result:',
-      result
-    );
-
-    console.log(
-      'Damage result:',
-      damageResult
     );
   }
 
@@ -687,17 +731,6 @@ export default class MainScene extends Phaser.Scene {
       of result.matches
     ) {
       let damagePerTile;
-
-      /*
-       * Chain 1:
-       * 3 damage pr tile
-       *
-       * Chain 2:
-       * 2 damage pr tile
-       *
-       * Chain 3+:
-       * 1 damage pr tile
-       */
 
       if (
         chainData.chain === 1
@@ -727,8 +760,7 @@ export default class MainScene extends Phaser.Scene {
           tileAmount *
           damagePerTile;
 
-        totalDamage +=
-          damage;
+        totalDamage += damage;
 
         breakdown.push({
           chain:
@@ -795,7 +827,329 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // JOBLIN DAMAGE ANIMATION
+  // START ENEMY TURN
+  // =====================================
+
+  startEnemyTurn() {
+    if (
+      this.battleWon ||
+      this.battleLost
+    ) {
+      return;
+    }
+
+    this.statusText.setText(
+      'Joblins tur...'
+    );
+
+    if (this.enemyHitTimer) {
+      this.enemyHitTimer.remove();
+      this.enemyHitTimer = null;
+    }
+
+    this.tweens.killTweensOf(
+      this.Joblin
+    );
+
+    this.Joblin.x =
+      this.enemyBaseX;
+
+    this.Joblin.y =
+      this.enemyBaseY;
+
+    const quote =
+      this.getNextJoblinQuote();
+
+    // Boble + attack starter samtidig
+    this.showJoblinSpeechBubble(
+      quote
+    );
+
+    this.playEnemyAttackAnimation();
+  }
+
+  // =====================================
+  // JOBLIN QUOTES
+  // =====================================
+
+  getNextJoblinQuote() {
+    const quote =
+      this.joblinQuotes[
+        this.joblinQuoteIndex
+      ];
+
+    this.joblinQuoteIndex =
+      (
+        this.joblinQuoteIndex + 1
+      ) %
+      this.joblinQuotes.length;
+
+    return quote;
+  }
+
+  // =====================================
+  // SPEECH BUBBLE
+  // =====================================
+
+  showJoblinSpeechBubble(message) {
+    this.hideJoblinSpeechBubble();
+
+    const bubbleX =
+      this.Joblin.x - 280;
+
+    const bubbleY =
+      this.Joblin.y - 100;
+
+    const bubbleWidth = 190;
+    const bubbleHeight = 65;
+
+    const container =
+      this.add.container(
+        bubbleX,
+        bubbleY
+      );
+
+    container.setDepth(40);
+
+    const graphics =
+      this.add.graphics();
+
+    graphics.fillStyle(
+      0x111111,
+      1
+    );
+
+    graphics.fillRoundedRect(
+      -3,
+      -3,
+      bubbleWidth + 6,
+      bubbleHeight + 6,
+      8
+    );
+
+    graphics.fillStyle(
+      0xffffff,
+      1
+    );
+
+    graphics.fillRoundedRect(
+      0,
+      0,
+      bubbleWidth,
+      bubbleHeight,
+      6
+    );
+
+    graphics.fillStyle(
+      0x111111,
+      1
+    );
+
+    graphics.fillTriangle(
+      bubbleWidth - 17,
+      bubbleHeight - 5,
+
+      bubbleWidth + 18,
+      bubbleHeight + 15,
+
+      bubbleWidth - 3,
+      bubbleHeight - 25
+    );
+
+    graphics.fillStyle(
+      0xffffff,
+      1
+    );
+
+    graphics.fillTriangle(
+      bubbleWidth - 15,
+      bubbleHeight - 8,
+
+      bubbleWidth + 12,
+      bubbleHeight + 10,
+
+      bubbleWidth - 5,
+      bubbleHeight - 22
+    );
+
+    const text =
+      this.add.text(
+        bubbleWidth / 2,
+        bubbleHeight / 2,
+        message,
+        {
+          fontSize: '12px',
+          color: '#000000',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          align: 'center',
+
+          wordWrap: {
+            width:
+              bubbleWidth - 20
+          }
+        }
+      )
+        .setOrigin(0.5);
+
+    container.add(
+      [
+        graphics,
+        text
+      ]
+    );
+
+    container.setScale(0.8);
+    container.setAlpha(0);
+
+    this.tweens.add({
+      targets: container,
+
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+
+      duration: 150,
+
+      ease: 'Back.Out'
+    });
+
+    this.joblinSpeechBubble =
+      container;
+  }
+
+  // =====================================
+  // HIDE SPEECH BUBBLE
+  // =====================================
+
+  hideJoblinSpeechBubble() {
+    if (
+      !this.joblinSpeechBubble
+    ) {
+      return;
+    }
+
+    this.joblinSpeechBubble.destroy(
+      true
+    );
+
+    this.joblinSpeechBubble = null;
+  }
+
+  // =====================================
+  // JOBLIN ATTACK ANIMATION
+  // =====================================
+
+  playEnemyAttackAnimation() {
+    if (
+      !this.Joblin ||
+      this.battleWon ||
+      this.battleLost
+    ) {
+      return;
+    }
+
+    this.Joblin.stop();
+
+    this.tweens.killTweensOf(
+      this.Joblin
+    );
+
+    this.Joblin.x =
+      this.enemyBaseX;
+
+    this.Joblin.y =
+      this.enemyBaseY;
+
+    this.Joblin.setTexture(
+      'JoblinDealDMG',
+      0
+    );
+
+    this.Joblin.once(
+      'animationcomplete-joblin-attack',
+      () => {
+        this.finishEnemyAttack();
+      }
+    );
+
+    this.Joblin.play(
+      'joblin-attack'
+    );
+  }
+
+  // =====================================
+  // FINISH ENEMY ATTACK
+  // =====================================
+
+  finishEnemyAttack() {
+    if (
+      this.battleWon ||
+      this.battleLost
+    ) {
+      return;
+    }
+
+    // =====================================
+    // NY ÆNDRING:
+    // Fjern taleboblen når angrebet slutter
+    // =====================================
+
+    this.hideJoblinSpeechBubble();
+
+    const damage =
+      this.getEnemyAttackDamage();
+
+    this.damagePlayer(
+      damage
+    );
+
+    this.enemyAttackCount++;
+
+    if (this.PlayerHP <= 0) {
+      this.loseBattle();
+
+      return;
+    }
+
+    this.Joblin.setTexture(
+      'JoblinIdle',
+      0
+    );
+
+    this.Joblin.play(
+      'joblin-idle'
+    );
+
+    this.enemyTurnActive = false;
+
+    if (
+      this.board &&
+      this.board.setState
+    ) {
+      this.board.setState(
+        'IDLE'
+      );
+    }
+
+    this.statusText.setText(
+      `Joblin gjorde ${damage} morale damage!`
+    );
+  }
+
+  // =====================================
+  // ENEMY DAMAGE CALCULATION
+  // =====================================
+
+  getEnemyAttackDamage() {
+    return (
+      10 +
+      this.enemyAttackCount * 5
+    );
+  }
+
+  // =====================================
+  // JOBLIN TAKE DAMAGE ANIMATION
   // =====================================
 
   playEnemyHitAnimation() {
@@ -803,49 +1157,27 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    /*
-     * Hvis en tidligere damage timer
-     * stadig eksisterer, fjernes den.
-     *
-     * Så undgår vi at en gammel timer
-     * pludselig starter idle-animationen
-     * midt i et nyt hit.
-     */
     if (this.enemyHitTimer) {
       this.enemyHitTimer.remove();
 
       this.enemyHitTimer = null;
     }
 
-    /*
-     * Stop eventuelle gamle tweens
-     * på Joblin.
-     */
     this.tweens.killTweensOf(
       this.Joblin
     );
 
-    /*
-     * Sørg for at han starter
-     * shake fra sin normale position.
-     */
     this.Joblin.x =
       this.enemyBaseX;
 
     this.Joblin.y =
       this.enemyBaseY;
 
-    // Stop idle animation
     this.Joblin.stop();
 
-    // Skift til damage-frame
     this.Joblin.setTexture(
       'JoblinTakeDMG'
     );
-
-    // =================================
-    // JOBLIN SHAKE
-    // =================================
 
     this.tweens.add({
       targets: this.Joblin,
@@ -867,39 +1199,22 @@ export default class MainScene extends Phaser.Scene {
       }
     });
 
-    // =================================
-    // SMALL SCREEN SHAKE
-    // =================================
-
-    /*
-     * duration = 120 ms
-     * intensity = meget lille shake
-     *
-     * Hvis du vil have kraftigere shake,
-     * kan du fx prøve 0.006.
-     */
     this.cameras.main.shake(
       120,
       0.003
     );
 
-    // =================================
-    // RETURN TO IDLE AFTER 2 SECONDS
-    // =================================
-
     this.enemyHitTimer =
       this.time.delayedCall(
-        1000,
+        this.enemyHitDuration,
         () => {
           this.enemyHitTimer = null;
 
-          /*
-           * Hvis Joblin er død,
-           * må idle IKKE starte igen.
-           */
           if (
             this.EnemyHP <= 0 ||
-            this.battleWon
+            this.battleWon ||
+            this.battleLost ||
+            this.enemyTurnActive
           ) {
             return;
           }
@@ -917,7 +1232,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DAMAGE NUMBER ANIMATION
+  // ENEMY DAMAGE NUMBER
   // =====================================
 
   showEnemyDamageNumber(amount) {
@@ -938,7 +1253,6 @@ export default class MainScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(30);
 
-    // Først popper tallet op
     this.tweens.add({
       targets: damageText,
 
@@ -953,8 +1267,6 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Back.Out',
 
       onComplete: () => {
-        // Derefter falder det ned
-        // og fader væk.
         this.tweens.add({
           targets: damageText,
 
@@ -979,6 +1291,106 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
+  // PLAYER MORALE DAMAGE NUMBER
+  // =====================================
+
+  showPlayerMoraleLoss(amount) {
+    const moraleText =
+      this.add.text(
+        this.player.x,
+        this.player.y,
+        `-${amount} MORALE`,
+        {
+          fontSize: '20px',
+          color: '#ff5555',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 4
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(30);
+
+    this.tweens.add({
+      targets: moraleText,
+
+      y:
+        moraleText.y - 35,
+
+      scaleX: 1.2,
+      scaleY: 1.2,
+
+      duration: 180,
+
+      ease: 'Back.Out',
+
+      onComplete: () => {
+        this.tweens.add({
+          targets: moraleText,
+
+          y:
+            moraleText.y + 55,
+
+          alpha: 0,
+
+          scaleX: 0.9,
+          scaleY: 0.9,
+
+          duration: 600,
+
+          ease: 'Quad.In',
+
+          onComplete: () => {
+            moraleText.destroy();
+          }
+        });
+      }
+    });
+  }
+
+  // =====================================
+  // PLAYER HIT ANIMATION
+  // =====================================
+
+  playPlayerHitAnimation() {
+    this.tweens.killTweensOf(
+      this.player
+    );
+
+    this.player.x =
+      this.playerBaseX;
+
+    this.player.y =
+      this.playerBaseY;
+
+    this.tweens.add({
+      targets: this.player,
+
+      x:
+        this.playerBaseX - 8,
+
+      duration: 55,
+
+      yoyo: true,
+
+      repeat: 4,
+
+      ease: 'Linear',
+
+      onComplete: () => {
+        this.player.x =
+          this.playerBaseX;
+      }
+    });
+
+    this.cameras.main.shake(
+      180,
+      0.004
+    );
+  }
+
+  // =====================================
   // WIN BATTLE
   // =====================================
 
@@ -989,16 +1401,15 @@ export default class MainScene extends Phaser.Scene {
 
     this.battleWon = true;
 
-    /*
-     * Hvis en timer var ved at
-     * skifte Joblin tilbage til idle,
-     * fjernes den.
-     */
+    this.enemyTurnActive = false;
+
     if (this.enemyHitTimer) {
       this.enemyHitTimer.remove();
 
       this.enemyHitTimer = null;
     }
+
+    this.hideJoblinSpeechBubble();
 
     if (this.gameOverText) {
       this.gameOverText.destroy();
@@ -1006,9 +1417,6 @@ export default class MainScene extends Phaser.Scene {
       this.gameOverText = null;
     }
 
-    /*
-     * Stop board-input.
-     */
     if (
       this.board &&
       this.board.setState
@@ -1025,14 +1433,41 @@ export default class MainScene extends Phaser.Scene {
 
     this.statusText.setText('');
 
-    /*
-     * Lige nu bliver Joblin stående
-     * på sin TakeDMG-frame.
-     *
-     * Her kan vi senere sætte den
-     * rigtige death-animation ind.
-     */
     this.showGameWon();
+  }
+
+  // =====================================
+  // LOSE BATTLE
+  // =====================================
+
+  loseBattle() {
+    if (this.battleLost) {
+      return;
+    }
+
+    this.battleLost = true;
+
+    this.enemyTurnActive = false;
+
+    this.hideJoblinSpeechBubble();
+
+    if (
+      this.board &&
+      this.board.setState
+    ) {
+      this.board.setState(
+        'GAME_OVER'
+      );
+    } else if (
+      this.board
+    ) {
+      this.board.state =
+        'GAME_OVER';
+    }
+
+    this.statusText.setText('');
+
+    this.showGameOver();
   }
 
   // =====================================
@@ -1317,20 +1752,22 @@ export default class MainScene extends Phaser.Scene {
 
     this.updateEnemyHealthBar();
 
-    // Floating damage number
     this.showEnemyDamageNumber(
       amount
     );
 
-    // Damage pose + shake
     this.playEnemyHitAnimation();
   }
 
   // =====================================
-  // DAMAGE PLAYER
+  // DAMAGE PLAYER / MORALE
   // =====================================
 
   damagePlayer(amount) {
+    if (amount <= 0) {
+      return;
+    }
+
     this.PlayerHP =
       Math.max(
         0,
@@ -1338,5 +1775,11 @@ export default class MainScene extends Phaser.Scene {
       );
 
     this.updatePlayerHealthBar();
+
+    this.showPlayerMoraleLoss(
+      amount
+    );
+
+    this.playPlayerHitAnimation();
   }
 }
