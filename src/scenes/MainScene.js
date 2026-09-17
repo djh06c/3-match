@@ -46,6 +46,11 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     this.load.image(
+      'officeBackground',
+      '/assets/backgrounds/KontorBaggrund.png'
+    );
+
+    this.load.image(
       'match3Background',
       '/assets/backgrounds/Baggrund-match3-2.0.png'
     );
@@ -90,6 +95,19 @@ export default class MainScene extends Phaser.Scene {
         frameHeight: 64
       }
     );
+
+    // =====================================
+    // JOBLIN DEATH
+    // =====================================
+
+    this.load.spritesheet(
+      'JoblinDeath',
+      '/assets/mobs/Joblin/JoblinDeath.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
+    );
   }
 
   create() {
@@ -117,12 +135,12 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     this.joblinQuotes = [
-      'Har du søgt bredt nok?',
-      'Har du opdateret dit CV?',
-      'Du skal være mere fleksibel.',
-      'Har du prøvet at netværke?',
-      'Du skal sende flere ansøgninger.',
-      'Vi skal lige tale om din indsats.'
+      'Kan du forklare hullet i dit CV fra 1998 til 2012?',
+      'Er du god til at tænke ud af boksen?',
+      'Vi leder efter en rigtig "Team Player"',
+      'SYNERGY',
+      'Er du god under pres? Vi har nogle skarpe deadlines.',
+      'Lad os "Circle back" til dette senere.'
     ];
 
     this.joblinQuoteIndex = 0;
@@ -133,24 +151,18 @@ export default class MainScene extends Phaser.Scene {
 
     this.topAreaHeight = 240;
 
-    this.add.rectangle(
+    const officeBackground = this.add.image(
       width / 2,
       this.topAreaHeight / 2,
-      width,
-      this.topAreaHeight,
-      0x3a3a3a
+      'officeBackground'
     );
 
-    this.add.text(
-      width / 2,
-      55,
-      'BATTLE AREA PLACEHOLDER',
-      {
-        fontSize: '22px',
-        color: '#ffffff'
-      }
-    )
-      .setOrigin(0.5);
+    officeBackground
+      .setDisplaySize(
+        width,
+        this.topAreaHeight
+      )
+      .setDepth(0);
 
     // =====================================
     // PLAYER
@@ -211,6 +223,29 @@ export default class MainScene extends Phaser.Scene {
               start: 0,
               end: 15
             }
+          ),
+
+        frameRate: 10,
+
+        repeat: 0
+      });
+    }
+
+    // =====================================
+    // DEATH ANIMATION
+    // =====================================
+
+    if (
+      !this.anims.exists(
+        'joblin-death'
+      )
+    ) {
+      this.anims.create({
+        key: 'joblin-death',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'JoblinDeath'
           ),
 
         frameRate: 10,
@@ -860,7 +895,6 @@ export default class MainScene extends Phaser.Scene {
     const quote =
       this.getNextJoblinQuote();
 
-    // Boble + attack starter samtidig
     this.showJoblinSpeechBubble(
       quote
     );
@@ -1090,11 +1124,6 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    // =====================================
-    // NY ÆNDRING:
-    // Fjern taleboblen når angrebet slutter
-    // =====================================
-
     this.hideJoblinSpeechBubble();
 
     const damage =
@@ -1229,6 +1258,86 @@ export default class MainScene extends Phaser.Scene {
           );
         }
       );
+  }
+
+  // =====================================
+  // JOBLIN DEATH ANIMATION
+  // =====================================
+
+  playEnemyDeathAnimation() {
+    if (!this.Joblin) {
+      this.showGameWon();
+      return;
+    }
+
+    // Stop hit-timer
+    if (this.enemyHitTimer) {
+      this.enemyHitTimer.remove();
+
+      this.enemyHitTimer = null;
+    }
+
+    // Stop gamle animationer og tweens
+    this.Joblin.stop();
+
+    this.tweens.killTweensOf(
+      this.Joblin
+    );
+
+    // Reset position
+    this.Joblin.x =
+      this.enemyBaseX;
+
+    this.Joblin.y =
+      this.enemyBaseY;
+
+    // =================================
+    // DEATH SHAKE
+    // =================================
+
+    this.tweens.add({
+      targets: this.Joblin,
+
+      x:
+        this.enemyBaseX + 10,
+
+      duration: 60,
+
+      yoyo: true,
+
+      repeat: 4,
+
+      ease: 'Linear',
+
+      onComplete: () => {
+        this.Joblin.x =
+          this.enemyBaseX;
+
+        // Skift til death spritesheet
+        this.Joblin.setTexture(
+          'JoblinDeath',
+          0
+        );
+
+        // Når death animation er færdig
+        this.Joblin.once(
+          'animationcomplete-joblin-death',
+          () => {
+            this.showGameWon();
+          }
+        );
+
+        this.Joblin.play(
+          'joblin-death'
+        );
+      }
+    });
+
+    // Kraftigere screenshake
+    this.cameras.main.shake(
+      250,
+      0.005
+    );
   }
 
   // =====================================
@@ -1433,7 +1542,9 @@ export default class MainScene extends Phaser.Scene {
 
     this.statusText.setText('');
 
-    this.showGameWon();
+    // NYT:
+    // Spil death animation før GAME WON
+    this.playEnemyDeathAnimation();
   }
 
   // =====================================
