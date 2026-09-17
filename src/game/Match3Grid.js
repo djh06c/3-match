@@ -12,7 +12,7 @@ export default class Match3Grid {
     // 0 = helt tilfældigt
     // 1 = moderat balancing
     // 2+ = stærkere balancing
-    this.weightStrength = 1.0;
+    this.weightStrength = 1.5;
 
     // En tile må aldrig få mindre end denne vægt.
     // Ellers kan en type næsten forsvinde helt.

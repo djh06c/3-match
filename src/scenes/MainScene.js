@@ -42,7 +42,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // BACKGROUND
+    // BACKGROUNDS
     // =====================================
 
     this.load.image(
@@ -56,12 +56,48 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // PLAYER
+    // BOB
     // =====================================
 
     this.load.image(
-      'player',
+      'Bob',
       '/assets/mobs/Bob/Bob.png'
+    );
+
+    this.load.spritesheet(
+      'BobIdle',
+      '/assets/mobs/Bob/BobIdle.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
+    );
+
+    this.load.spritesheet(
+      'BobDealDMG',
+      '/assets/mobs/Bob/BobDealDMG.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
+    );
+
+    this.load.spritesheet(
+      'BobTakeDMG',
+      '/assets/mobs/Bob/BobTakeDMG.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
+    );
+
+    this.load.spritesheet(
+      'BobDeath',
+      '/assets/mobs/Bob/BobDeath.png',
+      {
+        frameWidth: 64,
+        frameHeight: 64
+      }
     );
 
     // =====================================
@@ -96,10 +132,6 @@ export default class MainScene extends Phaser.Scene {
       }
     );
 
-    // =====================================
-    // JOBLIN DEATH
-    // =====================================
-
     this.load.spritesheet(
       'JoblinDeath',
       '/assets/mobs/Joblin/JoblinDeath.png',
@@ -125,10 +157,11 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTurnActive = false;
 
     this.enemyHitDuration = 1000;
-    this.enemySpeechDuration = 1200;
 
     this.enemyHitTimer = null;
+
     this.joblinSpeechBubble = null;
+    this.bobSpeechBubble = null;
 
     // =====================================
     // JOBLIN QUOTES
@@ -146,16 +179,32 @@ export default class MainScene extends Phaser.Scene {
     this.joblinQuoteIndex = 0;
 
     // =====================================
+    // BOB QUOTES
+    // =====================================
+
+    this.bobQuotes = [
+      'Placeholder 1',
+      'Placeholder 2',
+      'Placeholder 3',
+      'Placeholder 4',
+      'Placeholder 5',
+      'Placeholder 6'
+    ];
+
+    this.bobQuoteIndex = 0;
+
+    // =====================================
     // TOP / BATTLE AREA
     // =====================================
 
     this.topAreaHeight = 240;
 
-    const officeBackground = this.add.image(
-      width / 2,
-      this.topAreaHeight / 2,
-      'officeBackground'
-    );
+    const officeBackground =
+      this.add.image(
+        width / 2,
+        this.topAreaHeight / 2,
+        'officeBackground'
+      );
 
     officeBackground
       .setDisplaySize(
@@ -165,21 +214,121 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(0);
 
     // =====================================
-    // PLAYER
+    // BOB ANIMATIONS
     // =====================================
 
-    this.player = this.add.image(
+    if (
+      !this.anims.exists(
+        'bob-idle'
+      )
+    ) {
+      this.anims.create({
+        key: 'bob-idle',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'BobIdle'
+          ),
+
+        frameRate: 2,
+
+        repeat: -1
+      });
+    }
+
+    if (
+      !this.anims.exists(
+        'bob-attack'
+      )
+    ) {
+      this.anims.create({
+        key: 'bob-attack',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'BobDealDMG',
+            {
+              start: 0,
+              end: 13
+            }
+          ),
+
+        frameRate: 10,
+
+        repeat: 0
+      });
+    }
+
+    if (
+      !this.anims.exists(
+        'bob-take-dmg'
+      )
+    ) {
+      this.anims.create({
+        key: 'bob-take-dmg',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'BobTakeDMG',
+            {
+              start: 0,
+              end: 10
+            }
+          ),
+
+        frameRate: 10,
+
+        repeat: 0
+      });
+    }
+
+    if (
+      !this.anims.exists(
+        'bob-death'
+      )
+    ) {
+      this.anims.create({
+        key: 'bob-death',
+
+        frames:
+          this.anims.generateFrameNumbers(
+            'BobDeath',
+            {
+              start: 0,
+              end: 16
+            }
+          ),
+
+        frameRate: 10,
+
+        repeat: 0
+      });
+    }
+
+    // =====================================
+    // PLAYER / BOB
+    // =====================================
+
+    this.player = this.add.sprite(
       width * 0.25,
       100,
-      'player'
+      'BobIdle',
+      0
     );
 
     this.player
       .setScale(3)
       .setDepth(5);
 
-    this.playerBaseX = this.player.x;
-    this.playerBaseY = this.player.y;
+    this.playerBaseX =
+      this.player.x;
+
+    this.playerBaseY =
+      this.player.y;
+
+    this.player.play(
+      'bob-idle'
+    );
 
     // =====================================
     // JOBLIN ANIMATIONS
@@ -218,11 +367,7 @@ export default class MainScene extends Phaser.Scene {
 
         frames:
           this.anims.generateFrameNumbers(
-            'JoblinDealDMG',
-            {
-              start: 0,
-              end: 15
-            }
+            'JoblinDealDMG'
           ),
 
         frameRate: 10,
@@ -230,10 +375,6 @@ export default class MainScene extends Phaser.Scene {
         repeat: 0
       });
     }
-
-    // =====================================
-    // DEATH ANIMATION
-    // =====================================
 
     if (
       !this.anims.exists(
@@ -255,7 +396,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // =====================================
-    // ENEMY
+    // ENEMY / JOBLIN
     // =====================================
 
     this.Joblin = this.add.sprite(
@@ -280,7 +421,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // HP / MORALE VALUES
+    // HP / MORALE
     // =====================================
 
     this.PlayerMaxHP = 100;
@@ -293,40 +434,42 @@ export default class MainScene extends Phaser.Scene {
     // PLAYER NAME
     // =====================================
 
-    this.playerNameText = this.add.text(
-      width * 0.25,
-      205,
-      'BOB',
-      {
-        fontSize: '12px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(10);
+    this.playerNameText =
+      this.add.text(
+        width * 0.25,
+        205,
+        'BOB',
+        {
+          fontSize: '12px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
 
     // =====================================
     // ENEMY NAME
     // =====================================
 
-    this.enemyNameText = this.add.text(
-      width * 0.75,
-      205,
-      'JOBLIN',
-      {
-        fontSize: '12px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(10);
+    this.enemyNameText =
+      this.add.text(
+        width * 0.75,
+        205,
+        'JOBLIN',
+        {
+          fontSize: '12px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
 
     // =====================================
-    // PLAYER HEALTH / MORALE BAR
+    // PLAYER MORALE BAR
     // =====================================
 
     this.playerHpBarBackground =
@@ -351,19 +494,20 @@ export default class MainScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
         .setDepth(11);
 
-    this.playerHpText = this.add.text(
-      width * 0.25,
-      224,
-      '100 / 100',
-      {
-        fontSize: '9px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(12);
+    this.playerHpText =
+      this.add.text(
+        width * 0.25,
+        224,
+        '100 / 100',
+        {
+          fontSize: '9px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(12);
 
     // =====================================
     // ENEMY HEALTH BAR
@@ -391,22 +535,23 @@ export default class MainScene extends Phaser.Scene {
         .setOrigin(0, 0.5)
         .setDepth(11);
 
-    this.enemyHpText = this.add.text(
-      width * 0.75,
-      224,
-      '100 / 100',
-      {
-        fontSize: '9px',
-        color: '#ffffff',
-        fontFamily: 'Arial',
-        fontStyle: 'bold'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(12);
+    this.enemyHpText =
+      this.add.text(
+        width * 0.75,
+        224,
+        '100 / 100',
+        {
+          fontSize: '9px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          fontStyle: 'bold'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(12);
 
     // =====================================
-    // SKILLELINJE
+    // DIVIDER
     // =====================================
 
     this.add.rectangle(
@@ -441,19 +586,21 @@ export default class MainScene extends Phaser.Scene {
 
     const damageCenterX = 704;
 
-    this.damageTitle = this.add.text(
-      damageCenterX,
-      this.topAreaHeight + 60,
-      'DAMAGE',
-      {
-        fontSize: '16px',
-        color: '#000000',
-        fontFamily: 'Arial, sans-serif',
-        fontStyle: 'bold'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(10);
+    this.damageTitle =
+      this.add.text(
+        damageCenterX,
+        this.topAreaHeight + 60,
+        'DAMAGE',
+        {
+          fontSize: '16px',
+          color: '#000000',
+          fontFamily:
+            'Arial, sans-serif',
+          fontStyle: 'bold'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
 
     this.damageCalculationText =
       this.add.text(
@@ -498,17 +645,18 @@ export default class MainScene extends Phaser.Scene {
     // STATUS
     // =====================================
 
-    this.statusText = this.add.text(
-      width / 2,
-      this.topAreaHeight + 10,
-      'Board klar.',
-      {
-        fontSize: '16px',
-        color: '#ffff88'
-      }
-    )
-      .setOrigin(0.5)
-      .setDepth(10);
+    this.statusText =
+      this.add.text(
+        width / 2,
+        this.topAreaHeight + 10,
+        'Board klar.',
+        {
+          fontSize: '16px',
+          color: '#ffff88'
+        }
+      )
+        .setOrigin(0.5)
+        .setDepth(10);
 
     // =====================================
     // BOARD
@@ -525,54 +673,55 @@ export default class MainScene extends Phaser.Scene {
     const boardY =
       this.topAreaHeight + 22;
 
-    this.board = new Match3Board(
-      this,
-      {
-        x: boardX,
-        y: boardY,
+    this.board =
+      new Match3Board(
+        this,
+        {
+          x: boardX,
+          y: boardY,
 
-        rows: 8,
-        cols: 8,
+          rows: 8,
+          cols: 8,
 
-        colorCount: 6,
+          colorCount: 6,
 
-        tileSize,
+          tileSize,
 
-        iconSize: 32,
+          iconSize: 32,
 
-        tileTextures: [
-          'coffee',
-          'email',
-          'laptop',
-          'notebook',
-          'phone',
-          'clock'
-        ],
+          tileTextures: [
+            'coffee',
+            'email',
+            'laptop',
+            'notebook',
+            'phone',
+            'clock'
+          ],
 
-        tileColors: [
-          0x8b5cf6,
-          0x06b6d4,
-          0x22c55e,
-          0xf59e0b,
-          0xef4444,
-          0xe5e7eb
-        ],
+          tileColors: [
+            0x8b5cf6,
+            0x06b6d4,
+            0x22c55e,
+            0xf59e0b,
+            0xef4444,
+            0xe5e7eb
+          ],
 
-        onStateChange:
-          state => {
-            this.handleBoardState(
-              state
-            );
-          },
+          onStateChange:
+            state => {
+              this.handleBoardState(
+                state
+              );
+            },
 
-        onMoveComplete:
-          result => {
-            this.handleMoveComplete(
-              result
-            );
-          }
-      }
-    );
+          onMoveComplete:
+            result => {
+              this.handleMoveComplete(
+                result
+              );
+            }
+        }
+      );
 
     this.board.container
       .setDepth(5);
@@ -678,6 +827,13 @@ export default class MainScene extends Phaser.Scene {
 
     this.renderDamage();
 
+    // =====================================
+    // BOB ATTACK
+    // =====================================
+
+    this.playPlayerAttackAnimation();
+
+    // Joblin tager skaden
     this.damageEnemy(
       this.turnDamage
     );
@@ -694,7 +850,13 @@ export default class MainScene extends Phaser.Scene {
 
     this.playerMoveCount++;
 
-    if (this.playerMoveCount >= 3) {
+    // =====================================
+    // JOBLIN ATTACK AFTER 3 MOVES
+    // =====================================
+
+    if (
+      this.playerMoveCount >= 3
+    ) {
       this.playerMoveCount = 0;
 
       this.enemyTurnActive = true;
@@ -862,6 +1024,250 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
+  // BOB ATTACK
+  // =====================================
+
+  playPlayerAttackAnimation() {
+    if (
+      !this.player ||
+      this.battleLost
+    ) {
+      return;
+    }
+
+    this.player.stop();
+
+    this.tweens.killTweensOf(
+      this.player
+    );
+
+    this.player.x =
+      this.playerBaseX;
+
+    this.player.y =
+      this.playerBaseY;
+
+    const quote =
+      this.getNextBobQuote();
+
+    this.showBobSpeechBubble(
+      quote
+    );
+
+    this.player.setTexture(
+      'BobDealDMG',
+      0
+    );
+
+    this.player.once(
+      'animationcomplete-bob-attack',
+      () => {
+        this.hideBobSpeechBubble();
+
+        if (
+          this.battleLost
+        ) {
+          return;
+        }
+
+        this.player.setTexture(
+          'BobIdle',
+          0
+        );
+
+        this.player.play(
+          'bob-idle'
+        );
+      }
+    );
+
+    this.player.play(
+      'bob-attack'
+    );
+  }
+
+  // =====================================
+  // BOB QUOTES
+  // =====================================
+
+  getNextBobQuote() {
+    const quote =
+      this.bobQuotes[
+        this.bobQuoteIndex
+      ];
+
+    this.bobQuoteIndex =
+      (
+        this.bobQuoteIndex + 1
+      ) %
+      this.bobQuotes.length;
+
+    return quote;
+  }
+
+  // =====================================
+  // BOB SPEECH BUBBLE
+  // =====================================
+
+  showBobSpeechBubble(message) {
+    this.hideBobSpeechBubble();
+
+    /*
+     * Bob står i venstre side,
+     * så boblen placeres til højre
+     * for ham.
+     *
+     * Flyt disse værdier hvis du vil
+     * justere placeringen.
+     */
+    const bubbleX =
+      this.player.x + 80;
+
+    const bubbleY =
+      this.player.y - 100;
+
+    const bubbleWidth = 190;
+    const bubbleHeight = 65;
+
+    const container =
+      this.add.container(
+        bubbleX,
+        bubbleY
+      );
+
+    container.setDepth(40);
+
+    const graphics =
+      this.add.graphics();
+
+    // Sort outline
+    graphics.fillStyle(
+      0x111111,
+      1
+    );
+
+    graphics.fillRoundedRect(
+      -3,
+      -3,
+      bubbleWidth + 6,
+      bubbleHeight + 6,
+      8
+    );
+
+    // Hvid boble
+    graphics.fillStyle(
+      0xffffff,
+      1
+    );
+
+    graphics.fillRoundedRect(
+      0,
+      0,
+      bubbleWidth,
+      bubbleHeight,
+      6
+    );
+
+    // Sort hale mod Bob
+    graphics.fillStyle(
+      0x111111,
+      1
+    );
+
+    graphics.fillTriangle(
+      17,
+      bubbleHeight - 5,
+
+      -18,
+      bubbleHeight + 15,
+
+      3,
+      bubbleHeight - 25
+    );
+
+    // Hvid hale
+    graphics.fillStyle(
+      0xffffff,
+      1
+    );
+
+    graphics.fillTriangle(
+      15,
+      bubbleHeight - 8,
+
+      -12,
+      bubbleHeight + 10,
+
+      5,
+      bubbleHeight - 22
+    );
+
+    const text =
+      this.add.text(
+        bubbleWidth / 2,
+        bubbleHeight / 2,
+        message,
+        {
+          fontSize: '12px',
+          color: '#000000',
+          fontFamily: 'Arial',
+          fontStyle: 'bold',
+          align: 'center',
+
+          wordWrap: {
+            width:
+              bubbleWidth - 20
+          }
+        }
+      )
+        .setOrigin(0.5);
+
+    container.add(
+      [
+        graphics,
+        text
+      ]
+    );
+
+    container
+      .setScale(0.8)
+      .setAlpha(0);
+
+    this.tweens.add({
+      targets: container,
+
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+
+      duration: 150,
+
+      ease: 'Back.Out'
+    });
+
+    this.bobSpeechBubble =
+      container;
+  }
+
+  // =====================================
+  // HIDE BOB SPEECH BUBBLE
+  // =====================================
+
+  hideBobSpeechBubble() {
+    if (
+      !this.bobSpeechBubble
+    ) {
+      return;
+    }
+
+    this.bobSpeechBubble.destroy(
+      true
+    );
+
+    this.bobSpeechBubble = null;
+  }
+
+  // =====================================
   // START ENEMY TURN
   // =====================================
 
@@ -879,6 +1285,7 @@ export default class MainScene extends Phaser.Scene {
 
     if (this.enemyHitTimer) {
       this.enemyHitTimer.remove();
+
       this.enemyHitTimer = null;
     }
 
@@ -922,7 +1329,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // SPEECH BUBBLE
+  // JOBLIN SPEECH BUBBLE
   // =====================================
 
   showJoblinSpeechBubble(message) {
@@ -1033,8 +1440,9 @@ export default class MainScene extends Phaser.Scene {
       ]
     );
 
-    container.setScale(0.8);
-    container.setAlpha(0);
+    container
+      .setScale(0.8)
+      .setAlpha(0);
 
     this.tweens.add({
       targets: container,
@@ -1053,7 +1461,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // HIDE SPEECH BUBBLE
+  // HIDE JOBLIN SPEECH BUBBLE
   // =====================================
 
   hideJoblinSpeechBubble() {
@@ -1071,7 +1479,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // JOBLIN ATTACK ANIMATION
+  // JOBLIN ATTACK
   // =====================================
 
   playEnemyAttackAnimation() {
@@ -1135,7 +1543,9 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemyAttackCount++;
 
-    if (this.PlayerHP <= 0) {
+    if (
+      this.PlayerHP <= 0
+    ) {
       this.loseBattle();
 
       return;
@@ -1167,7 +1577,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY DAMAGE CALCULATION
+  // ENEMY DAMAGE
   // =====================================
 
   getEnemyAttackDamage() {
@@ -1178,7 +1588,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // JOBLIN TAKE DAMAGE ANIMATION
+  // JOBLIN TAKE DAMAGE
   // =====================================
 
   playEnemyHitAnimation() {
@@ -1261,7 +1671,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // JOBLIN DEATH ANIMATION
+  // JOBLIN DEATH
   // =====================================
 
   playEnemyDeathAnimation() {
@@ -1270,30 +1680,23 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    // Stop hit-timer
     if (this.enemyHitTimer) {
       this.enemyHitTimer.remove();
 
       this.enemyHitTimer = null;
     }
 
-    // Stop gamle animationer og tweens
     this.Joblin.stop();
 
     this.tweens.killTweensOf(
       this.Joblin
     );
 
-    // Reset position
     this.Joblin.x =
       this.enemyBaseX;
 
     this.Joblin.y =
       this.enemyBaseY;
-
-    // =================================
-    // DEATH SHAKE
-    // =================================
 
     this.tweens.add({
       targets: this.Joblin,
@@ -1313,13 +1716,11 @@ export default class MainScene extends Phaser.Scene {
         this.Joblin.x =
           this.enemyBaseX;
 
-        // Skift til death spritesheet
         this.Joblin.setTexture(
           'JoblinDeath',
           0
         );
 
-        // Når death animation er færdig
         this.Joblin.once(
           'animationcomplete-joblin-death',
           () => {
@@ -1333,7 +1734,156 @@ export default class MainScene extends Phaser.Scene {
       }
     });
 
-    // Kraftigere screenshake
+    this.cameras.main.shake(
+      250,
+      0.005
+    );
+  }
+
+  // =====================================
+  // BOB TAKE DAMAGE
+  // =====================================
+
+  playPlayerHitAnimation() {
+    if (
+      !this.player ||
+      this.battleLost
+    ) {
+      return;
+    }
+
+    this.player.stop();
+
+    this.tweens.killTweensOf(
+      this.player
+    );
+
+    this.player.x =
+      this.playerBaseX;
+
+    this.player.y =
+      this.playerBaseY;
+
+    this.hideBobSpeechBubble();
+
+    this.player.setTexture(
+      'BobTakeDMG',
+      0
+    );
+
+    // Shake samtidig med animationen
+    this.tweens.add({
+      targets: this.player,
+
+      x:
+        this.playerBaseX - 8,
+
+      duration: 55,
+
+      yoyo: true,
+
+      repeat: 4,
+
+      ease: 'Linear',
+
+      onComplete: () => {
+        this.player.x =
+          this.playerBaseX;
+      }
+    });
+
+    this.player.once(
+      'animationcomplete-bob-take-dmg',
+      () => {
+        if (
+          this.PlayerHP <= 0 ||
+          this.battleLost
+        ) {
+          return;
+        }
+
+        this.player.setTexture(
+          'BobIdle',
+          0
+        );
+
+        this.player.play(
+          'bob-idle'
+        );
+      }
+    );
+
+    this.player.play(
+      'bob-take-dmg'
+    );
+
+    this.cameras.main.shake(
+      180,
+      0.004
+    );
+  }
+
+  // =====================================
+  // BOB DEATH
+  // =====================================
+
+  playPlayerDeathAnimation() {
+    if (!this.player) {
+      this.showGameOver();
+      return;
+    }
+
+    this.hideBobSpeechBubble();
+
+    this.player.stop();
+
+    this.tweens.killTweensOf(
+      this.player
+    );
+
+    this.player.x =
+      this.playerBaseX;
+
+    this.player.y =
+      this.playerBaseY;
+
+    // Lille death shake
+    this.tweens.add({
+      targets: this.player,
+
+      x:
+        this.playerBaseX - 10,
+
+      duration: 60,
+
+      yoyo: true,
+
+      repeat: 4,
+
+      ease: 'Linear',
+
+      onComplete: () => {
+        this.player.x =
+          this.playerBaseX;
+
+        this.player.setTexture(
+          'BobDeath',
+          0
+        );
+
+        this.player.once(
+          'animationcomplete-bob-death',
+          () => {
+            this.showGameOver();
+          }
+        );
+
+        this.player.play(
+          'bob-death'
+        );
+      }
+    });
+
     this.cameras.main.shake(
       250,
       0.005
@@ -1459,47 +2009,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // PLAYER HIT ANIMATION
-  // =====================================
-
-  playPlayerHitAnimation() {
-    this.tweens.killTweensOf(
-      this.player
-    );
-
-    this.player.x =
-      this.playerBaseX;
-
-    this.player.y =
-      this.playerBaseY;
-
-    this.tweens.add({
-      targets: this.player,
-
-      x:
-        this.playerBaseX - 8,
-
-      duration: 55,
-
-      yoyo: true,
-
-      repeat: 4,
-
-      ease: 'Linear',
-
-      onComplete: () => {
-        this.player.x =
-          this.playerBaseX;
-      }
-    });
-
-    this.cameras.main.shake(
-      180,
-      0.004
-    );
-  }
-
-  // =====================================
   // WIN BATTLE
   // =====================================
 
@@ -1519,6 +2028,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.hideJoblinSpeechBubble();
+    this.hideBobSpeechBubble();
 
     if (this.gameOverText) {
       this.gameOverText.destroy();
@@ -1542,8 +2052,6 @@ export default class MainScene extends Phaser.Scene {
 
     this.statusText.setText('');
 
-    // NYT:
-    // Spil death animation før GAME WON
     this.playEnemyDeathAnimation();
   }
 
@@ -1561,6 +2069,7 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTurnActive = false;
 
     this.hideJoblinSpeechBubble();
+    this.hideBobSpeechBubble();
 
     if (
       this.board &&
@@ -1578,7 +2087,8 @@ export default class MainScene extends Phaser.Scene {
 
     this.statusText.setText('');
 
-    this.showGameOver();
+    // Bob spiller death-animation først
+    this.playPlayerDeathAnimation();
   }
 
   // =====================================
@@ -1779,7 +2289,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // CHECK SET OVERLAP
+  // SET OVERLAP
   // =====================================
 
   setsOverlap(
@@ -1871,7 +2381,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DAMAGE PLAYER / MORALE
+  // DAMAGE PLAYER
   // =====================================
 
   damagePlayer(amount) {
