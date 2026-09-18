@@ -367,7 +367,11 @@ export default class MainScene extends Phaser.Scene {
 
         frames:
           this.anims.generateFrameNumbers(
-            'JoblinDealDMG'
+            'JoblinDealDMG',
+            {
+              start: 0,
+              end: 14
+            }
           ),
 
         frameRate: 10,
@@ -386,7 +390,11 @@ export default class MainScene extends Phaser.Scene {
 
         frames:
           this.anims.generateFrameNumbers(
-            'JoblinDeath'
+            'JoblinDeath',
+            {
+              start: 0,
+              end: 23
+            }
           ),
 
         frameRate: 10,
@@ -855,7 +863,7 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     if (
-      this.playerMoveCount >= 3
+      this.playerMoveCount >= 2
     ) {
       this.playerMoveCount = 0;
 
