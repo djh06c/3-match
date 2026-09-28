@@ -863,7 +863,7 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     if (
-      this.playerMoveCount >= 2
+      this.playerMoveCount >= 1
     ) {
       this.playerMoveCount = 0;
 
