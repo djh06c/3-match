@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
+import enemies from '../game/Enemies.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -9,6 +10,11 @@ export default class MainScene extends Phaser.Scene {
   init(data = {}) {
     this.encounterId = data.encounterId ?? 'joblin';
     this.encounterIndex = data.encounterIndex ?? 0;
+    this.enemyConfig = enemies[this.encounterId];
+
+    if (!this.enemyConfig) {
+      throw new Error(`Unknown encounter: ${this.encounterId}`);
+    }
   }
 
   preload() {
@@ -106,45 +112,19 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // JOBLIN
+    // ENEMY
     // =====================================
 
-    this.load.image(
-      'Joblin',
-      '/assets/mobs/Joblin/Joblin.png'
-    );
-
-    this.load.spritesheet(
-      'JoblinIdle',
-      '/assets/mobs/Joblin/JoblinIdle.png',
-      {
-        frameWidth: 64,
-        frameHeight: 64
+    for (const asset of this.enemyConfig.assets) {
+      if (asset.frameWidth) {
+        this.load.spritesheet(asset.key, asset.path, {
+          frameWidth: asset.frameWidth,
+          frameHeight: asset.frameHeight
+        });
+      } else {
+        this.load.image(asset.key, asset.path);
       }
-    );
-
-    this.load.image(
-      'JoblinTakeDMG',
-      '/assets/mobs/Joblin/JoblinTakeDMG.png'
-    );
-
-    this.load.spritesheet(
-      'JoblinDealDMG',
-      '/assets/mobs/Joblin/JoblinDealDMG.png',
-      {
-        frameWidth: 64,
-        frameHeight: 64
-      }
-    );
-
-    this.load.spritesheet(
-      'JoblinDeath',
-      '/assets/mobs/Joblin/JoblinDeath.png',
-      {
-        frameWidth: 64,
-        frameHeight: 64
-      }
-    );
+    }
   }
 
   create() {
@@ -166,27 +146,20 @@ export default class MainScene extends Phaser.Scene {
     this.enemyAttackCount = 0;
     this.enemyTurnActive = false;
 
-    this.enemyHitDuration = 1000;
+    this.enemyHitDuration = this.enemyConfig.hitDuration;
 
     this.enemyHitTimer = null;
 
-    this.joblinSpeechBubble = null;
+    this.enemySpeechBubble = null;
     this.bobSpeechBubble = null;
 
     // =====================================
-    // JOBLIN QUOTES
+    // ENEMY QUOTES
     // =====================================
 
-    this.joblinQuotes = [
-      'Kan du forklare hullet i dit CV fra 1998 til 2012?',
-      'Er du god til at tænke ud af boksen?',
-      'Vi leder efter en rigtig "Team Player"',
-      'SYNERGY',
-      'Er du god under pres? Vi har nogle skarpe deadlines.',
-      'Lad os "Circle back" til dette senere.'
-    ];
+    this.enemyQuotes = this.enemyConfig.quotes;
 
-    this.joblinQuoteIndex = 0;
+    this.enemyQuoteIndex = 0;
 
     // =====================================
     // BOB QUOTES
@@ -341,101 +314,48 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // JOBLIN ANIMATIONS
+    // ENEMY ANIMATIONS
     // =====================================
 
-    if (
-      !this.anims.exists(
-        'joblin-idle'
-      )
-    ) {
-      this.anims.create({
-        key: 'joblin-idle',
+    for (const action of Object.keys(this.enemyConfig.animations)) {
+      const animation = this.enemyConfig.animations[action];
 
-        frames:
-          this.anims.generateFrameNumbers(
-            'JoblinIdle',
-            {
-              start: 0,
-              end: 1
-            }
-          ),
-
-        frameRate: 2,
-
-        repeat: -1
-      });
-    }
-
-    if (
-      !this.anims.exists(
-        'joblin-attack'
-      )
-    ) {
-      this.anims.create({
-        key: 'joblin-attack',
-
-        frames:
-          this.anims.generateFrameNumbers(
-            'JoblinDealDMG',
-            {
-              start: 0,
-              end: 14
-            }
-          ),
-
-        frameRate: 10,
-
-        repeat: 0
-      });
-    }
-
-    if (
-      !this.anims.exists(
-        'joblin-death'
-      )
-    ) {
-      this.anims.create({
-        key: 'joblin-death',
-
-        frames:
-          this.anims.generateFrameNumbers(
-            'JoblinDeath',
-            {
-              start: 0,
-              end: 23
-            }
-          ),
-
-        frameRate: 10,
-
-        repeat: 0
-      });
+      if (!this.anims.exists(animation.key)) {
+        this.anims.create({
+          key: animation.key,
+          frames: this.anims.generateFrameNumbers(this.enemyConfig.textures[action], {
+            start: animation.start,
+            end: animation.end
+          }),
+          frameRate: animation.frameRate,
+          repeat: animation.repeat
+        });
+      }
     }
 
     // =====================================
-    // ENEMY / JOBLIN
+    // ENEMY
     // =====================================
 
-    this.Joblin = this.add.sprite(
+    this.enemy = this.add.sprite(
       width * 0.75,
       100,
-      'JoblinIdle',
+      this.enemyConfig.textures.idle,
       0
     );
 
-    this.Joblin
-      .setScale(3)
+    this.enemy
+      .setScale(this.enemyConfig.scale)
       .setDepth(5);
 
     this.enemyBaseX =
-      this.Joblin.x;
+      this.enemy.x;
 
     this.enemyBaseY =
-      this.Joblin.y;
+      this.enemy.y;
 
-    this.Joblin.play(
-      'joblin-idle'
+    this.enemy.play(
+      this.enemyConfig.animations.idle.key
     );
 
     // =====================================
@@ -445,8 +365,8 @@ export default class MainScene extends Phaser.Scene {
     this.PlayerMaxHP = 100;
     this.PlayerHP = 100;
 
-    this.EnemyMaxHP = 100;
-    this.EnemyHP = 100;
+    this.EnemyMaxHP = this.enemyConfig.maxHP;
+    this.EnemyHP = this.EnemyMaxHP;
 
     // =====================================
     // PLAYER NAME
@@ -475,7 +395,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         width * 0.75,
         205,
-        'JOBLIN',
+        this.enemyConfig.name,
         {
           fontSize: '12px',
           color: '#ffffff',
@@ -779,7 +699,7 @@ export default class MainScene extends Phaser.Scene {
 
       case 'ENEMY_TURN':
         this.statusText.setText(
-          'Joblins tur...'
+          `${this.enemyConfig.name}s tur...`
         );
         break;
 
@@ -851,7 +771,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.playPlayerAttackAnimation();
 
-    // Joblin tager skaden
+    // Enemy takes damage
     this.damageEnemy(
       this.turnDamage
     );
@@ -869,7 +789,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerMoveCount++;
 
     // =====================================
-    // JOBLIN ATTACK AFTER 3 MOVES
+    // ENEMY ATTACK AFTER EACH VALID MOVE
     // =====================================
 
     if (
@@ -889,7 +809,7 @@ export default class MainScene extends Phaser.Scene {
       }
 
       this.statusText.setText(
-        'Joblin gør sig klar...'
+        `${this.enemyConfig.name} gør sig klar...`,
       );
 
       this.time.delayedCall(
@@ -1298,7 +1218,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.statusText.setText(
-      'Joblins tur...'
+      `${this.enemyConfig.name}s tur...`
     );
 
     if (this.enemyHitTimer) {
@@ -1308,19 +1228,19 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.tweens.killTweensOf(
-      this.Joblin
+      this.enemy
     );
 
-    this.Joblin.x =
+    this.enemy.x =
       this.enemyBaseX;
 
-    this.Joblin.y =
+    this.enemy.y =
       this.enemyBaseY;
 
     const quote =
-      this.getNextJoblinQuote();
+      this.getNextEnemyQuote();
 
-    this.showJoblinSpeechBubble(
+    this.showEnemySpeechBubble(
       quote
     );
 
@@ -1328,36 +1248,36 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // JOBLIN QUOTES
+  // ENEMY QUOTES
   // =====================================
 
-  getNextJoblinQuote() {
+  getNextEnemyQuote() {
     const quote =
-      this.joblinQuotes[
-        this.joblinQuoteIndex
+      this.enemyQuotes[
+        this.enemyQuoteIndex
       ];
 
-    this.joblinQuoteIndex =
+    this.enemyQuoteIndex =
       (
-        this.joblinQuoteIndex + 1
+        this.enemyQuoteIndex + 1
       ) %
-      this.joblinQuotes.length;
+      this.enemyQuotes.length;
 
     return quote;
   }
 
   // =====================================
-  // JOBLIN SPEECH BUBBLE
+  // ENEMY SPEECH BUBBLE
   // =====================================
 
-  showJoblinSpeechBubble(message) {
-    this.hideJoblinSpeechBubble();
+  showEnemySpeechBubble(message) {
+    this.hideEnemySpeechBubble();
 
     const bubbleX =
-      this.Joblin.x - 280;
+      this.enemy.x - 280;
 
     const bubbleY =
-      this.Joblin.y - 100;
+      this.enemy.y - 100;
 
     const bubbleWidth = 190;
     const bubbleHeight = 65;
@@ -1474,7 +1394,7 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Back.Out'
     });
 
-    this.joblinSpeechBubble =
+    this.enemySpeechBubble =
       container;
   }
 
@@ -1482,59 +1402,59 @@ export default class MainScene extends Phaser.Scene {
   // HIDE JOBLIN SPEECH BUBBLE
   // =====================================
 
-  hideJoblinSpeechBubble() {
+  hideEnemySpeechBubble() {
     if (
-      !this.joblinSpeechBubble
+      !this.enemySpeechBubble
     ) {
       return;
     }
 
-    this.joblinSpeechBubble.destroy(
+    this.enemySpeechBubble.destroy(
       true
     );
 
-    this.joblinSpeechBubble = null;
+    this.enemySpeechBubble = null;
   }
 
   // =====================================
-  // JOBLIN ATTACK
+  // ENEMY ATTACK
   // =====================================
 
   playEnemyAttackAnimation() {
     if (
-      !this.Joblin ||
+      !this.enemy ||
       this.battleWon ||
       this.battleLost
     ) {
       return;
     }
 
-    this.Joblin.stop();
+    this.enemy.stop();
 
     this.tweens.killTweensOf(
-      this.Joblin
+      this.enemy
     );
 
-    this.Joblin.x =
+    this.enemy.x =
       this.enemyBaseX;
 
-    this.Joblin.y =
+    this.enemy.y =
       this.enemyBaseY;
 
-    this.Joblin.setTexture(
-      'JoblinDealDMG',
+    this.enemy.setTexture(
+      this.enemyConfig.textures.attack,
       0
     );
 
-    this.Joblin.once(
-      'animationcomplete-joblin-attack',
+    this.enemy.once(
+      `animationcomplete-${this.enemyConfig.animations.attack.key}`,
       () => {
         this.finishEnemyAttack();
       }
     );
 
-    this.Joblin.play(
-      'joblin-attack'
+    this.enemy.play(
+      this.enemyConfig.animations.attack.key
     );
   }
 
@@ -1550,7 +1470,7 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.hideJoblinSpeechBubble();
+    this.hideEnemySpeechBubble();
 
     const damage =
       this.getEnemyAttackDamage();
@@ -1569,13 +1489,13 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.Joblin.setTexture(
-      'JoblinIdle',
+    this.enemy.setTexture(
+      this.enemyConfig.textures.idle,
       0
     );
 
-    this.Joblin.play(
-      'joblin-idle'
+    this.enemy.play(
+      this.enemyConfig.animations.idle.key
     );
 
     this.enemyTurnActive = false;
@@ -1590,7 +1510,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.statusText.setText(
-      `Joblin gjorde ${damage} morale damage!`
+      `${this.enemyConfig.name} gjorde ${damage} morale damage!`
     );
   }
 
@@ -1600,15 +1520,15 @@ export default class MainScene extends Phaser.Scene {
 
   getEnemyAttackDamage() {
     // Increasing pressure rewards larger matches and cascades over basic matches.
-    return 5 + this.enemyAttackCount * 2;
+    return this.enemyConfig.baseDamage + this.enemyAttackCount * this.enemyConfig.damageIncrease;
   }
 
   // =====================================
-  // JOBLIN TAKE DAMAGE
+  // ENEMY TAKE DAMAGE
   // =====================================
 
   playEnemyHitAnimation() {
-    if (!this.Joblin) {
+    if (!this.enemy) {
       return;
     }
 
@@ -1619,23 +1539,23 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.tweens.killTweensOf(
-      this.Joblin
+      this.enemy
     );
 
-    this.Joblin.x =
+    this.enemy.x =
       this.enemyBaseX;
 
-    this.Joblin.y =
+    this.enemy.y =
       this.enemyBaseY;
 
-    this.Joblin.stop();
+    this.enemy.stop();
 
-    this.Joblin.setTexture(
-      'JoblinTakeDMG'
+    this.enemy.setTexture(
+      this.enemyConfig.textures.hit
     );
 
     this.tweens.add({
-      targets: this.Joblin,
+      targets: this.enemy,
 
       x:
         this.enemyBaseX + 8,
@@ -1649,7 +1569,7 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Linear',
 
       onComplete: () => {
-        this.Joblin.x =
+        this.enemy.x =
           this.enemyBaseX;
       }
     });
@@ -1674,24 +1594,24 @@ export default class MainScene extends Phaser.Scene {
             return;
           }
 
-          this.Joblin.setTexture(
-            'JoblinIdle',
+          this.enemy.setTexture(
+            this.enemyConfig.textures.idle,
             0
           );
 
-          this.Joblin.play(
-            'joblin-idle'
+          this.enemy.play(
+            this.enemyConfig.animations.idle.key
           );
         }
       );
   }
 
   // =====================================
-  // JOBLIN DEATH
+  // ENEMY DEATH
   // =====================================
 
   playEnemyDeathAnimation() {
-    if (!this.Joblin) {
+    if (!this.enemy) {
       this.showGameWon();
       return;
     }
@@ -1702,20 +1622,20 @@ export default class MainScene extends Phaser.Scene {
       this.enemyHitTimer = null;
     }
 
-    this.Joblin.stop();
+    this.enemy.stop();
 
     this.tweens.killTweensOf(
-      this.Joblin
+      this.enemy
     );
 
-    this.Joblin.x =
+    this.enemy.x =
       this.enemyBaseX;
 
-    this.Joblin.y =
+    this.enemy.y =
       this.enemyBaseY;
 
     this.tweens.add({
-      targets: this.Joblin,
+      targets: this.enemy,
 
       x:
         this.enemyBaseX + 10,
@@ -1729,23 +1649,23 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Linear',
 
       onComplete: () => {
-        this.Joblin.x =
+        this.enemy.x =
           this.enemyBaseX;
 
-        this.Joblin.setTexture(
-          'JoblinDeath',
+        this.enemy.setTexture(
+          this.enemyConfig.textures.death,
           0
         );
 
-        this.Joblin.once(
-          'animationcomplete-joblin-death',
+        this.enemy.once(
+          `animationcomplete-${this.enemyConfig.animations.death.key}`,
           () => {
             this.showGameWon();
           }
         );
 
-        this.Joblin.play(
-          'joblin-death'
+        this.enemy.play(
+          this.enemyConfig.animations.death.key
         );
       }
     });
@@ -1913,8 +1833,8 @@ export default class MainScene extends Phaser.Scene {
   showEnemyDamageNumber(amount) {
     const damageText =
       this.add.text(
-        this.Joblin.x,
-        this.Joblin.y,
+        this.enemy.x,
+        this.enemy.y,
         `-${amount}`,
         {
           fontSize: '24px',
@@ -2043,7 +1963,7 @@ export default class MainScene extends Phaser.Scene {
       this.enemyHitTimer = null;
     }
 
-    this.hideJoblinSpeechBubble();
+    this.hideEnemySpeechBubble();
     this.hideBobSpeechBubble();
 
     if (this.gameOverText) {
@@ -2084,7 +2004,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemyTurnActive = false;
 
-    this.hideJoblinSpeechBubble();
+    this.hideEnemySpeechBubble();
     this.hideBobSpeechBubble();
 
     if (
@@ -2128,7 +2048,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         boardCenterX,
         boardCenterY,
-        this.encounterId === 'joblin' ? "YOU’RE HIRED!" : 'ENCOUNTER COMPLETE',
+        this.enemyConfig.victoryText ?? 'ENCOUNTER COMPLETE',
         {
           fontSize: '42px',
           color: '#ffffff',
