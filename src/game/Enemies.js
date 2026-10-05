@@ -26,14 +26,24 @@ const enemies = {
       attack: { key: 'joblin-attack', start: 0, end: 14, frameRate: 10, repeat: 0 },
       death: { key: 'joblin-death', start: 0, end: 23, frameRate: 10, repeat: 0 }
     },
-    quotes: [
-        'Kan du forklare hullet i dit CV fra 1998 til 2012?',
-        'Er du god til at tænke ud af boksen?',
-        'Vi leder efter en rigtig "Team Player"',
-        'SYNERGY',
-        'Er du god under pres? Vi har nogle skarpe deadlines.',
-        'Lad os "Circle back" til dette senere.'
-      ]
+    dialogue: {
+      intro: ['So... tell me a little about yourself.'],
+      badMove: ['Interesting strategy.', 'Are you nervous?'],
+      normalMove: ['Okay.', 'Noted.', "We will circle back to that."],
+      goodMove: ['You came prepared.', 'That looks good on your CV.'],
+      greatMove: ['Please stop exceeding expectations.'],
+      combo: ['Multitasking. Management will love you.'],
+      playerLowMorale: ['Are you good under pressure?'],
+      enemyLowHP: ['One final question. Why should we hire you?'],
+      enemyAction: [
+        'Where do you see yourself in 45 years?',
+        'What is your greatest weakness?',
+        'We need ten years of entry-level experience.',
+        'Are you a Team Player?',
+        'SYNERGY.'
+      ],
+      defeat: ['You got the job. The salary is competitive.']
+    }
   }
 };
 

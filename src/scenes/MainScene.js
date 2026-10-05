@@ -157,9 +157,10 @@ export default class MainScene extends Phaser.Scene {
     // ENEMY QUOTES
     // =====================================
 
-    this.enemyQuotes = this.enemyConfig.quotes;
-
-    this.enemyQuoteIndex = 0;
+    this.enemyDialogueTimer = null;
+    this.bobDialogueTimer = null;
+    this.playerLowMoraleShown = false;
+    this.enemyLowHPShown = false;
 
     // =====================================
     // BOB QUOTES
@@ -665,6 +666,7 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(5);
 
     this.board.playInitialDrop();
+    this.showEnemyDialogue('intro');
   }
 
   // =====================================
@@ -674,6 +676,8 @@ export default class MainScene extends Phaser.Scene {
   handleBoardState(state) {
     switch (state) {
       case 'SWAPPING':
+        this.hideEnemySpeechBubble();
+        this.hideBobSpeechBubble();
         this.statusText.setText(
           'Bytter...'
         );
@@ -745,6 +749,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     if (!result.valid) {
+      this.showEnemyDialogue('badMove');
       this.statusText.setText(
         'Ingen match - prøv igen.'
       );
@@ -784,6 +789,17 @@ export default class MainScene extends Phaser.Scene {
 
     if (!result.hasValidMoves) {
       return;
+    }
+
+    // Prefer the strongest reaction when a move qualifies for several events.
+    if (result.chains > 1) {
+      this.showEnemyDialogue('combo');
+    } else if (this.turnDamage >= 15) {
+      this.showEnemyDialogue('greatMove');
+    } else if (this.turnDamage >= 12) {
+      this.showEnemyDialogue('goodMove');
+    } else {
+      this.showEnemyDialogue('normalMove');
     }
 
     this.playerMoveCount++;
@@ -1000,8 +1016,6 @@ export default class MainScene extends Phaser.Scene {
     this.player.once(
       'animationcomplete-bob-attack',
       () => {
-        this.hideBobSpeechBubble();
-
         if (
           this.battleLost
         ) {
@@ -1062,7 +1076,7 @@ export default class MainScene extends Phaser.Scene {
       this.player.x + 80;
 
     const bubbleY =
-      this.player.y - 100;
+      this.playerBaseY - 10;
 
     const bubbleWidth = 190;
     const bubbleHeight = 65;
@@ -1185,6 +1199,10 @@ export default class MainScene extends Phaser.Scene {
 
     this.bobSpeechBubble =
       container;
+
+    this.bobDialogueTimer = this.time.delayedCall(5000, () => {
+      this.hideBobSpeechBubble();
+    });
   }
 
   // =====================================
@@ -1192,6 +1210,11 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   hideBobSpeechBubble() {
+    if (this.bobDialogueTimer) {
+      this.bobDialogueTimer.remove();
+      this.bobDialogueTimer = null;
+    }
+
     if (
       !this.bobSpeechBubble
     ) {
@@ -1237,12 +1260,12 @@ export default class MainScene extends Phaser.Scene {
     this.enemy.y =
       this.enemyBaseY;
 
-    const quote =
-      this.getNextEnemyQuote();
-
-    this.showEnemySpeechBubble(
-      quote
-    );
+    if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3) {
+      this.enemyLowHPShown = true;
+      this.showEnemyDialogue('enemyLowHP');
+    } else {
+      this.showEnemyDialogue('enemyAction');
+    }
 
     this.playEnemyAttackAnimation();
   }
@@ -1251,19 +1274,21 @@ export default class MainScene extends Phaser.Scene {
   // ENEMY QUOTES
   // =====================================
 
-  getNextEnemyQuote() {
-    const quote =
-      this.enemyQuotes[
-        this.enemyQuoteIndex
-      ];
+  showEnemyDialogue(event) {
+    if (this.battleLost || (this.battleWon && event !== 'defeat')) {
+      return;
+    }
 
-    this.enemyQuoteIndex =
-      (
-        this.enemyQuoteIndex + 1
-      ) %
-      this.enemyQuotes.length;
+    const lines = this.enemyConfig.dialogue?.[event];
+    if (!lines || lines.length === 0) {
+      return;
+    }
 
-    return quote;
+    const index = Math.floor(Math.random() * lines.length);
+    this.showEnemySpeechBubble(lines[index]);
+    this.enemyDialogueTimer = this.time.delayedCall(5000, () => {
+      this.hideEnemySpeechBubble();
+    });
   }
 
   // =====================================
@@ -1403,6 +1428,11 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   hideEnemySpeechBubble() {
+    if (this.enemyDialogueTimer) {
+      this.enemyDialogueTimer.remove();
+      this.enemyDialogueTimer = null;
+    }
+
     if (
       !this.enemySpeechBubble
     ) {
@@ -1470,8 +1500,6 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.hideEnemySpeechBubble();
-
     const damage =
       this.getEnemyAttackDamage();
 
@@ -1497,6 +1525,11 @@ export default class MainScene extends Phaser.Scene {
     this.enemy.play(
       this.enemyConfig.animations.idle.key
     );
+
+    if (!this.playerLowMoraleShown && this.PlayerHP <= this.PlayerMaxHP * 0.3) {
+      this.playerLowMoraleShown = true;
+      this.showEnemyDialogue('playerLowMorale');
+    }
 
     this.enemyTurnActive = false;
 
@@ -1699,8 +1732,6 @@ export default class MainScene extends Phaser.Scene {
 
     this.player.y =
       this.playerBaseY;
-
-    this.hideBobSpeechBubble();
 
     this.player.setTexture(
       'BobTakeDMG',
@@ -1965,6 +1996,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.hideEnemySpeechBubble();
     this.hideBobSpeechBubble();
+    this.showEnemyDialogue('defeat');
 
     if (this.gameOverText) {
       this.gameOverText.destroy();
