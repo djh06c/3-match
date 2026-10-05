@@ -6,6 +6,11 @@ export default class MainScene extends Phaser.Scene {
     super('MainScene');
   }
 
+  init(data = {}) {
+    this.encounterId = data.encounterId ?? 'joblin';
+    this.encounterIndex = data.encounterIndex ?? 0;
+  }
+
   preload() {
     // =====================================
     // MATCH-3 ICONS
@@ -151,6 +156,11 @@ export default class MainScene extends Phaser.Scene {
 
     this.battleWon = false;
     this.battleLost = false;
+
+    // Scene instances are reused when TRY AGAIN restarts combat.
+    this.gameWonText = null;
+    this.gameOverText = null;
+    this.resultTransitionActive = false;
 
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
@@ -1589,10 +1599,8 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   getEnemyAttackDamage() {
-    return (
-      10 +
-      this.enemyAttackCount * 5
-    );
+    // Increasing pressure rewards larger matches and cascades over basic matches.
+    return 5 + this.enemyAttackCount * 2;
   }
 
   // =====================================
@@ -2120,7 +2128,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         boardCenterX,
         boardCenterY,
-        'GAME WON',
+        this.encounterId === 'joblin' ? "YOU’RE HIRED!" : 'ENCOUNTER COMPLETE',
         {
           fontSize: '42px',
           color: '#ffffff',
@@ -2132,6 +2140,15 @@ export default class MainScene extends Phaser.Scene {
       )
         .setOrigin(0.5)
         .setDepth(20);
+
+    this.addResultButton(boardCenterX, boardCenterY + 75, 'CONTINUE', () => {
+      this.scene.start('ProgressionScene', {
+        completedEncounterId: this.encounterId,
+        nextEncounterIndex: this.encounterIndex + 1,
+        playerMorale: this.PlayerHP,
+        playerMaxMorale: this.PlayerMaxHP
+      });
+    });
   }
 
   // =====================================
@@ -2158,7 +2175,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         boardCenterX,
         boardCenterY,
-        'GAME OVER',
+        this.battleLost ? 'BURNOUT' : 'GAME OVER',
         {
           fontSize: '42px',
           color: '#ffffff',
@@ -2170,6 +2187,42 @@ export default class MainScene extends Phaser.Scene {
       )
         .setOrigin(0.5)
         .setDepth(20);
+
+    this.addResultButton(boardCenterX, boardCenterY + 75, 'TRY AGAIN', () => {
+      this.scene.restart({
+        encounterId: this.encounterId,
+        encounterIndex: this.encounterIndex
+      });
+    });
+
+    this.addResultButton(boardCenterX, boardCenterY + 140, 'MAIN MENU', () => {
+      this.scene.start('MainMenuScene');
+    });
+  }
+
+  addResultButton(x, y, label, onClick) {
+    const button = this.add.rectangle(x, y, 220, 50, 0x555555, 0.95)
+      .setStrokeStyle(3, 0xffffff)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(21);
+
+    this.add.text(x, y, label, {
+      fontSize: '22px',
+      color: '#ffffff',
+      fontFamily: 'Arial',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(22);
+
+    button.on('pointerover', () => button.setFillStyle(0x777777, 0.95));
+    button.on('pointerout', () => button.setFillStyle(0x555555, 0.95));
+    button.on('pointerdown', () => {
+      if (this.resultTransitionActive) {
+        return;
+      }
+
+      this.resultTransitionActive = true;
+      onClick();
+    });
   }
 
   // =====================================
