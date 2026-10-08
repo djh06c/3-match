@@ -6,6 +6,15 @@ const enemies = {
     maxHP: 100,
     baseDamage: 5,
     damageIncrease: 2,
+    abilities: [
+      {
+        id: 'unexpectedFollowUp',
+        type: 'doubleAttack',
+        hpThreshold: 0.5,
+        hitDelay: 1200,
+        dialogueEvent: 'unexpectedFollowUp'
+      }
+    ],
     scale: 3,
     hitDuration: 1000,
     victoryText: 'YOU\u2019RE HIRED!',
@@ -35,6 +44,7 @@ const enemies = {
       combo: ['Multitasking. Management will love you.'],
       playerLowMorale: ['Are you good under pressure?'],
       enemyLowHP: ['One final question. Why should we hire you?'],
+      unexpectedFollowUp: ['One more thing. This role combines three full-time positions.'],
       enemyAction: [
         'Where do you see yourself in 45 years?',
         'What is your greatest weakness?',

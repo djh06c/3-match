@@ -146,6 +146,11 @@ export default class MainScene extends Phaser.Scene {
     this.enemyAttackCount = 0;
     this.enemyTurnActive = false;
 
+    this.usedEnemyAbilities = [];
+    this.enemyAttackDamages = [];
+    this.enemyTurnDamage = 0;
+    this.enemyAbility = null;
+
     this.enemyHitDuration = this.enemyConfig.hitDuration;
 
     this.enemyHitTimer = null;
@@ -1260,7 +1265,23 @@ export default class MainScene extends Phaser.Scene {
     this.enemy.y =
       this.enemyBaseY;
 
-    if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3) {
+    const abilities = this.enemyConfig.abilities ?? [];
+    this.enemyAbility = abilities.find(ability =>
+      ability.type === 'doubleAttack' &&
+      !this.usedEnemyAbilities.includes(ability.id) &&
+      this.EnemyHP < this.EnemyMaxHP * ability.hpThreshold
+    );
+
+    const normalDamage = this.getEnemyAttackDamage();
+    this.enemyAttackDamages = [normalDamage];
+    this.enemyTurnDamage = 0;
+
+    if (this.enemyAbility) {
+      this.usedEnemyAbilities.push(this.enemyAbility.id);
+      this.enemyAttackDamages.push(normalDamage);
+      this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
+      this.statusText.setText(`${this.enemyConfig.name}: DOUBLE ATTACK!`);
+    } else if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3) {
       this.enemyLowHPShown = true;
       this.showEnemyDialogue('enemyLowHP');
     } else {
@@ -1500,14 +1521,16 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    const damage =
-      this.getEnemyAttackDamage();
+    const damage = this.enemyAttackDamages.shift();
+    if (damage === undefined) {
+      return;
+    }
+
+    this.enemyTurnDamage += damage;
 
     this.damagePlayer(
       damage
     );
-
-    this.enemyAttackCount++;
 
     if (
       this.PlayerHP <= 0
@@ -1516,6 +1539,19 @@ export default class MainScene extends Phaser.Scene {
 
       return;
     }
+
+    // Keep input locked between hits and give Bob's hit animation time to finish.
+    if (this.enemyAttackDamages.length > 0) {
+      this.time.delayedCall(this.enemyAbility.hitDelay, () => {
+        if (!this.battleWon && !this.battleLost) {
+          this.playEnemyAttackAnimation();
+        }
+      });
+      return;
+    }
+
+    // Damage scaling advances once per turn, including a double-attack turn.
+    this.enemyAttackCount++;
 
     this.enemy.setTexture(
       this.enemyConfig.textures.idle,
@@ -1543,7 +1579,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.statusText.setText(
-      `${this.enemyConfig.name} gjorde ${damage} morale damage!`
+      `${this.enemyConfig.name} gjorde ${this.enemyTurnDamage} morale damage!`
     );
   }
 
