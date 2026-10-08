@@ -10,6 +10,7 @@ const enemies = {
       {
         id: 'unexpectedFollowUp',
         type: 'doubleAttack',
+        description: 'The Joblin will ask two questions at the same time, when HP goes below 50%.',
         hpThreshold: 0.5,
         hitDelay: 1200,
         dialogueEvent: 'unexpectedFollowUp'

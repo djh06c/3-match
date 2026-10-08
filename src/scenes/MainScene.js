@@ -413,6 +413,49 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(10);
 
     // =====================================
+    // ENEMY ABILITY INFO
+    // =====================================
+
+    const abilityDescriptions = (this.enemyConfig.abilities ?? [])
+      .map(ability => ability.description)
+      .filter(description => description);
+
+    if (abilityDescriptions.length > 0) {
+      const infoX = this.enemyNameText.x + this.enemyNameText.width / 2 + 20;
+      const infoY = this.enemyNameText.y;
+
+      const infoIcon = this.add.circle(infoX, infoY, 10, 0x222222)
+        .setStrokeStyle(2, 0xffffff)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(12);
+
+      this.add.text(infoX, infoY, 'i', {
+        fontSize: '14px',
+        color: '#ffffff',
+        fontFamily: 'Arial',
+        fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(13);
+
+      const tooltip = this.add.text(width - 20, infoY - 20,
+        abilityDescriptions.join('\n\n'), {
+          fontSize: '14px',
+          color: '#ffffff',
+          backgroundColor: '#222222',
+          fontFamily: 'Arial',
+          padding: { x: 12, y: 10 },
+          wordWrap: { width: 280 }
+        }).setOrigin(1, 1).setDepth(50).setVisible(false);
+
+      infoIcon.on('pointerover', () => {
+        tooltip.setVisible(true);
+      });
+
+      infoIcon.on('pointerout', () => {
+        tooltip.setVisible(false);
+      });
+    }
+
+    // =====================================
     // PLAYER MORALE BAR
     // =====================================
 
