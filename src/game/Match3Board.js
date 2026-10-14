@@ -159,6 +159,34 @@ export default class Match3Board {
   // STATE
   // =====================================================
 
+  coverTilesWithInk(count) {
+    this.clearInk();
+    const tiles = this.tileViews.flat().filter(tile => tile);
+
+    for (let index = 0; index < count && tiles.length > 0; index++) {
+      const randomIndex = Phaser.Math.Between(0, tiles.length - 1);
+      const tile = tiles.splice(randomIndex, 1)[0];
+      const ink = this.scene.add.image(0, 0, 'inkStain');
+      ink.setDisplaySize(this.tileSize - 4, this.tileSize - 4);
+      tile.icon?.setVisible(false);
+      // Attach ink to the tile so it follows swaps and falling tiles.
+      tile.add(ink);
+      tile.ink = ink;
+    }
+    this.updateSelectionVisuals();
+  }
+
+  clearInk() {
+    for (const tile of this.tileViews.flat()) {
+      if (tile?.ink) {
+        tile.ink.destroy();
+        tile.ink = null;
+        tile.icon?.setVisible(true);
+      }
+    }
+    this.updateSelectionVisuals();
+  }
+
   setState(state) {
     this.state = state;
 
@@ -740,7 +768,9 @@ export default class Match3Board {
             ? 5
             : 3,
 
-          selected
+          tile.ink
+            ? 0x000000
+            : selected
             ? 0xffff00
             : this.tileColors[
                 tile.tileValue
@@ -1235,7 +1265,7 @@ export default class Match3Board {
   // INITIAL DROP
   // =====================================================
 
-  async playInitialDrop() {
+  async playInitialDrop(endState = 'IDLE') {
     /*
      * Boardet låses mens tiles falder ind.
      */
@@ -1314,7 +1344,7 @@ export default class Match3Board {
     );
 
     this.setState(
-      'IDLE'
+      endState
     );
   }
 

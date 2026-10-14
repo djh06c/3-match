@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import MainScene from './scenes/MainScene.js';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import ProgressionScene from './scenes/ProgressionScene.js';
+import LunchScene from './scenes/LunchScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -17,7 +18,8 @@ const config = {
   scene: [
     MainMenuScene,
     MainScene,
-    ProgressionScene
+    ProgressionScene,
+    LunchScene
   ]
 };
 

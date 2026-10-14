@@ -10,6 +10,8 @@ export default class MainScene extends Phaser.Scene {
   init(data = {}) {
     this.encounterId = data.encounterId ?? 'joblin';
     this.encounterIndex = data.encounterIndex ?? 0;
+    this.startingMorale = data.playerMorale ?? 100;
+    this.startingMaxMorale = data.playerMaxMorale ?? 100;
     this.enemyConfig = enemies[this.encounterId];
 
     if (!this.enemyConfig) {
@@ -18,6 +20,10 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.image('inkStain',
+      new URL('../../assets/mobs/Printosaurus/Inkstain.png', import.meta.url).href);
+    this.load.image('aiChip',
+      new URL('../../assets/icons/Chip - AI.png', import.meta.url).href);
     // =====================================
     // MATCH-3 ICONS
     // =====================================
@@ -144,12 +150,17 @@ export default class MainScene extends Phaser.Scene {
 
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
+    const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
+    this.nextInkAttack = inkAbility
+      ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
+      : null;
     this.enemyTurnActive = false;
 
     this.usedEnemyAbilities = [];
     this.enemyAttackDamages = [];
     this.enemyTurnDamage = 0;
     this.enemyAbility = null;
+    this.fixedEnemyDamage = null;
 
     this.enemyHitDuration = this.enemyConfig.hitDuration;
 
@@ -368,8 +379,8 @@ export default class MainScene extends Phaser.Scene {
     // HP / MORALE
     // =====================================
 
-    this.PlayerMaxHP = 100;
-    this.PlayerHP = 100;
+    this.PlayerMaxHP = this.startingMaxMorale;
+    this.PlayerHP = this.startingMorale;
 
     this.EnemyMaxHP = this.enemyConfig.maxHP;
     this.EnemyHP = this.EnemyMaxHP;
@@ -713,8 +724,238 @@ export default class MainScene extends Phaser.Scene {
     this.board.container
       .setDepth(5);
 
-    this.board.playInitialDrop();
+    this.createAIControls();
+    this.updatePlayerHealthBar();
+    this.startEncounter();
+  }
+
+  async startEncounter() {
+    const spawn = this.enemyConfig.animations.spawn;
+    if (spawn) {
+      const spawnFinished = new Promise(resolve => {
+        this.enemy.once(`animationcomplete-${spawn.key}`, () => {
+          this.enemy.play(this.enemyConfig.animations.idle.key);
+          resolve();
+        });
+        this.enemy.play(spawn.key);
+      });
+
+      // Tile drop must not unlock input while the enemy is still spawning.
+      await Promise.all([spawnFinished, this.board.playInitialDrop('ENCOUNTER_INTRO')]);
+      if (this.battleWon || this.battleLost || !this.scene.isActive()) return;
+      this.board.setState('IDLE');
+    } else {
+      await this.board.playInitialDrop();
+    }
     this.showEnemyDialogue('intro');
+  }
+
+  createAIControls() {
+    this.aiBoosters = this.registry.get('aiBoosters') ?? {
+      unlocked: false, selectedPower: null, suspicion: 0
+    };
+    // Keep a separate copy so AI use and result recovery cannot change the retry point.
+    this.startingAIBoosters = { ...this.aiBoosters };
+    this.registry.set('aiBoosters', this.aiBoosters);
+    this.aiMenu = null;
+    this.aiHint = null;
+    this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 1;
+    this.freeAIMove = false;
+    this.supervisorActive = false;
+    this.suspicionRecovered = false;
+
+    const button = this.add.rectangle(75, 620, 100, 60, 0x333333)
+      .setStrokeStyle(2, 0xffffff).setDepth(20);
+    this.aiButton = button;
+    this.add.image(75, 611, 'aiChip').setDisplaySize(28, 28).setDepth(21);
+    this.aiButtonText = this.add.text(75, 638, this.aiBoosters.unlocked ? 'AI' : 'AI LOCKED', {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
+    }).setOrigin(0.5).setDepth(21);
+
+    if (this.aiBoosters.unlocked) {
+      button.setInteractive({ useHandCursor: true });
+      button.on('pointerdown', () => this.openAIMenu());
+    }
+
+    this.add.text(75, 295, 'SUPERVISOR', {
+      fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
+    }).setOrigin(0.5).setDepth(20);
+    this.add.rectangle(25, 318, 100, 12, 0x333333).setOrigin(0, 0.5).setDepth(20);
+    this.suspicionBar = this.add.rectangle(25, 318, 100, 12, 0xffaa33)
+      .setOrigin(0, 0.5).setDepth(21);
+    this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
+    this.suspicionText = this.add.text(75, 340,
+      `Suspicion: ${this.aiBoosters.suspicion}/100`, {
+        fontSize: '11px', color: '#ffffff', fontFamily: 'Arial'
+      }).setOrigin(0.5).setDepth(20);
+    if (this.aiBoosters.suspicion >= 100) {
+      this.startSupervisorIntervention();
+    }
+  }
+
+  openAIMenu() {
+    if (this.board.state !== 'IDLE' || this.battleWon || this.battleLost || this.supervisorActive) {
+      return;
+    }
+
+    this.board.resetPointerState();
+    this.board.setState('AI_MENU');
+    this.aiMenu = this.add.container(0, 0).setDepth(60);
+    const shade = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.65).setInteractive();
+    const panel = this.add.rectangle(400, 350, 460, 230, 0x222222).setStrokeStyle(2, 0xffffff);
+    const title = this.add.text(400, 275, 'AI BOOSTERS', {
+      fontSize: '24px', color: '#ffffff', fontFamily: 'Arial'
+    }).setOrigin(0.5);
+    const useButton = this.add.rectangle(400, 350, 400, 85, 0x555555)
+      .setInteractive({ useHandCursor: true });
+    if (this.aiPowerUsesRemaining <= 0 || !this.aiBoosters.selectedPower) {
+      useButton.disableInteractive();
+      useButton.setFillStyle(0x333333);
+    }
+    const powerName = this.aiBoosters.selectedPower === 'moraleBoost' ? 'MORALE BOOST' : 'BEST MOVE';
+    const effect = this.aiBoosters.selectedPower === 'moraleBoost'
+      ? 'Recover 10 Morale. Keep your turn.'
+      : 'Highlights and plays a free swap.';
+    const suspicionCost = this.aiBoosters.selectedPower === 'moraleBoost'
+      ? Math.min(10, this.PlayerMaxHP - this.PlayerHP)
+      : 20;
+    const label = this.add.text(400, 350,
+      `${powerName} - ${this.aiPowerUsesRemaining} uses left this fight\n${effect} +${suspicionCost} Suspicion`, {
+        fontSize: '16px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+      }).setOrigin(0.5);
+    const close = this.add.text(400, 425, 'CLOSE', {
+      fontSize: '18px', color: '#ffffff', fontFamily: 'Arial'
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    this.aiMenu.add([shade, panel, title, useButton, label, close]);
+    close.on('pointerdown', () => this.closeAIMenu());
+    useButton.on('pointerdown', () => {
+      if (this.aiBoosters.selectedPower === 'moraleBoost') {
+        this.useMoraleBoost();
+      } else {
+        this.useBestMove();
+      }
+    });
+  }
+
+  closeAIMenu() {
+    this.aiMenu?.destroy(true);
+    this.aiMenu = null;
+    if (this.board.state === 'AI_MENU') {
+      this.board.setState('IDLE');
+    }
+  }
+
+  useBestMove() {
+    if (this.board.state !== 'AI_MENU' || this.aiPowerUsesRemaining <= 0 || this.supervisorActive ||
+        this.aiBoosters.selectedPower !== 'bestMove' ||
+        this.battleWon || this.battleLost) {
+      return;
+    }
+
+    const grid = this.board.grid;
+    let bestMove = null;
+    let bestScore = 0;
+
+    // Try each adjacent swap and restore it. Compare immediate matches, not random refills.
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        for (const [otherRow, otherCol] of [[row, col + 1], [row + 1, col]]) {
+          if (!grid.inBounds(otherRow, otherCol)) continue;
+          grid.swapCells(row, col, otherRow, otherCol);
+          const matches = grid.findMatches();
+          const valid = grid.matchesContainEitherCell(matches, row, col, otherRow, otherCol);
+          const cells = new Set(matches.flatMap(match =>
+            match.cells.map(cell => `${cell.row},${cell.col}`)));
+          grid.swapCells(row, col, otherRow, otherCol);
+          if (valid && cells.size > bestScore) {
+            bestScore = cells.size;
+            bestMove = [{ row, col }, { row: otherRow, col: otherCol }];
+          }
+        }
+      }
+    }
+
+    if (!bestMove) {
+      this.statusText.setText('No valid move found.');
+      return;
+    }
+
+    this.aiHint?.destroy(true);
+    this.aiHint = this.add.container(0, 0).setDepth(15);
+    for (const cell of bestMove) {
+      const position = this.board.getCellPosition(cell.row, cell.col);
+      this.aiHint.add(this.add.rectangle(position.x, position.y, 48, 48)
+        .setFillStyle(0xffffff, 0).setStrokeStyle(4, 0xffff00));
+    }
+
+    this.finishAIPowerUse(20);
+    this.board.setState('AI_PREVIEW');
+    this.statusText.setText('AI is playing a free move!');
+    this.time.delayedCall(700, () => {
+      if (this.battleWon || this.battleLost) return;
+      this.freeAIMove = true;
+      this.board.setState('IDLE');
+      this.board.performSwap(bestMove[0].row, bestMove[0].col,
+        bestMove[1].row, bestMove[1].col);
+    });
+  }
+
+  useMoraleBoost() {
+    if (this.board.state !== 'AI_MENU' || this.aiPowerUsesRemaining <= 0 || this.supervisorActive ||
+        this.aiBoosters.selectedPower !== 'moraleBoost' || this.battleWon || this.battleLost) {
+      return;
+    }
+    if (this.PlayerHP >= this.PlayerMaxHP) {
+      this.statusText.setText('Morale is already full.');
+      return;
+    }
+
+    const healedMorale = Math.min(10, this.PlayerMaxHP - this.PlayerHP);
+    this.PlayerHP += healedMorale;
+    this.updatePlayerHealthBar();
+    this.finishAIPowerUse(healedMorale);
+    this.statusText.setText('Recovered up to 10 Morale. Your turn continues!');
+  }
+
+  finishAIPowerUse(suspicionCost) {
+    this.aiPowerUsesRemaining--;
+    this.aiBoosters.suspicion = Math.min(100, this.aiBoosters.suspicion + suspicionCost);
+    this.registry.set('aiBoosters', this.aiBoosters);
+    this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
+    this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
+    this.closeAIMenu();
+    if (this.aiBoosters.suspicion >= 100) {
+      this.startSupervisorIntervention();
+    }
+  }
+
+  startSupervisorIntervention() {
+    if (this.supervisorActive || this.battleWon || this.battleLost) return;
+
+    this.supervisorActive = true;
+    this.EnemyMaxHP += 50;
+    this.EnemyHP = this.EnemyMaxHP;
+    this.updateEnemyHealthBar();
+    this.aiButton.disableInteractive();
+    this.aiButtonText.setText('AI DISABLED');
+
+    const message = this.add.text(this.scale.width / 2, 80,
+      'SUPERVISOR\nWe have noticed a huge incline in your effectiveness and we would like to see you do it live.', {
+        fontSize: '16px', color: '#ffffff', backgroundColor: '#222222',
+        fontFamily: 'Arial', align: 'center', padding: { x: 12, y: 10 },
+        wordWrap: { width: 650 }
+      }).setOrigin(0.5).setDepth(55);
+    this.time.delayedCall(8000, () => message.destroy());
+  }
+
+  recoverSuspicionAfterFight() {
+    // Both result paths can show a result more than once; recovery happens only once.
+    if (this.suspicionRecovered) return;
+    this.suspicionRecovered = true;
+    this.aiBoosters.suspicion = Math.max(0, this.aiBoosters.suspicion - 5);
+    this.registry.set('aiBoosters', this.aiBoosters);
+    this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
+    this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
   }
 
   // =====================================
@@ -724,6 +965,8 @@ export default class MainScene extends Phaser.Scene {
   handleBoardState(state) {
     switch (state) {
       case 'SWAPPING':
+        this.aiHint?.destroy(true);
+        this.aiHint = null;
         this.hideEnemySpeechBubble();
         this.hideBobSpeechBubble();
         this.statusText.setText(
@@ -796,13 +1039,25 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    const freeMove = this.freeAIMove;
+    this.freeAIMove = false;
+
     if (!result.valid) {
+      this.damagePlayer(5);
+      if (this.PlayerHP <= 0) {
+        this.loseBattle();
+        return;
+      }
       this.showEnemyDialogue('badMove');
       this.statusText.setText(
-        'Ingen match - prøv igen.'
+        'No match - lost 5 Morale. Try again.'
       );
 
       return;
+    }
+
+    if (!freeMove) {
+      this.board.clearInk();
     }
 
     const damageResult =
@@ -848,6 +1103,12 @@ export default class MainScene extends Phaser.Scene {
       this.showEnemyDialogue('goodMove');
     } else {
       this.showEnemyDialogue('normalMove');
+    }
+
+    // A free AI swap deals damage, then returns input without an enemy turn.
+    if (freeMove) {
+      this.statusText.setText(`${this.turnDamage} damage. Your extra turn!`);
+      return;
     }
 
     this.playerMoveCount++;
@@ -1320,6 +1581,10 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTurnDamage = 0;
 
     if (this.enemyAbility) {
+      // Reaching the threshold sooner locks in lower damage for the rest of the fight.
+      if (this.enemyAbility.stopDamageScaling) {
+        this.fixedEnemyDamage = normalDamage;
+      }
       this.usedEnemyAbilities.push(this.enemyAbility.id);
       this.enemyAttackDamages.push(normalDamage);
       this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
@@ -1596,6 +1861,15 @@ export default class MainScene extends Phaser.Scene {
     // Damage scaling advances once per turn, including a double-attack turn.
     this.enemyAttackCount++;
 
+    const inkAbility = (this.enemyConfig.abilities ?? []).find(ability =>
+      ability.type === 'ink' && this.enemyAttackCount >= this.nextInkAttack
+    );
+    if (inkAbility) {
+      const tileCount = Math.round(this.board.rows * this.board.cols * inkAbility.tilePercentage);
+      this.board.coverTilesWithInk(tileCount);
+      this.nextInkAttack = this.enemyAttackCount + Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns);
+    }
+
     this.enemy.setTexture(
       this.enemyConfig.textures.idle,
       0
@@ -1622,7 +1896,9 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.statusText.setText(
-      `${this.enemyConfig.name} gjorde ${this.enemyTurnDamage} morale damage!`
+      inkAbility
+        ? `${this.enemyConfig.name}: INK ATTACK! Tiles hidden for one turn.`
+        : `${this.enemyConfig.name} gjorde ${this.enemyTurnDamage} morale damage!`
     );
   }
 
@@ -1631,6 +1907,9 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   getEnemyAttackDamage() {
+    if (this.fixedEnemyDamage !== null) {
+      return this.fixedEnemyDamage;
+    }
     // Increasing pressure rewards larger matches and cascades over basic matches.
     return this.enemyConfig.baseDamage + this.enemyAttackCount * this.enemyConfig.damageIncrease;
   }
@@ -1745,6 +2024,15 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemy.y =
       this.enemyBaseY;
+
+    // Enemies without a death sheet still use the shared victory flow.
+    if (!this.enemyConfig.animations.death) {
+      this.tweens.add({
+        targets: this.enemy, alpha: 0, duration: 600,
+        onComplete: () => this.showGameWon()
+      });
+      return;
+    }
 
     this.tweens.add({
       targets: this.enemy,
@@ -2064,6 +2352,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.battleWon = true;
+    this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
 
@@ -2112,6 +2401,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.battleLost = true;
+    this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
 
@@ -2194,6 +2484,8 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    this.recoverSuspicionAfterFight();
+
     const boardCenterX =
       this.scale.width / 2;
 
@@ -2220,9 +2512,12 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(20);
 
     this.addResultButton(boardCenterX, boardCenterY + 75, 'TRY AGAIN', () => {
+      this.registry.set('aiBoosters', { ...this.startingAIBoosters });
       this.scene.restart({
         encounterId: this.encounterId,
-        encounterIndex: this.encounterIndex
+        encounterIndex: this.encounterIndex,
+        playerMorale: this.startingMorale,
+        playerMaxMorale: this.startingMaxMorale
       });
     });
 

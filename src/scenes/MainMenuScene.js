@@ -103,6 +103,11 @@ export default class MainMenuScene extends Phaser.Scene {
 
     // Start spillet
     button.on('pointerdown', () => {
+      this.registry.set('aiBoosters', {
+        unlocked: false,
+        selectedPower: null,
+        suspicion: 0
+      });
       this.scene.start('MainScene');
     });
   }

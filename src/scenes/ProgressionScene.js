@@ -20,7 +20,7 @@ export default class ProgressionScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
 
-    this.add.text(width / 2, height / 2 - 100, 'YOUR CAREER CONTINUES', {
+    this.add.text(width / 2, height / 2 - 140, this.progression.completedEncounterId === 'joblin' ? 'TIME FOR A BREAK' : 'WORKDAY COMPLETE', {
       fontSize: '30px',
       color: '#ffffff',
       fontFamily: 'Arial',
@@ -28,22 +28,60 @@ export default class ProgressionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 25,
+    this.add.text(width / 2, height / 2 - 85,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
         fontSize: '20px',
         color: '#ffff88',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 + 60,
-      'You have completed the current playable encounter.\nMore workplace challenges are coming soon.', {
-        fontSize: '18px',
+    if (this.progression.completedEncounterId === 'joblin') {
+      this.add.text(width / 2, height / 2 - 30,
+        'Where would you like to go?', {
+          fontSize: '18px',
+          color: '#ffffff',
+          fontFamily: 'Arial',
+          align: 'center',
+          lineSpacing: 10,
+          wordWrap: { width: 650 }
+        }).setOrigin(0.5);
+
+      const lunchButton = this.add.rectangle(width / 2 - 140, height / 2 + 40,
+        240, 60, 0x555555)
+        .setStrokeStyle(3, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+
+      this.add.text(width / 2 - 140, height / 2 + 40, 'LUNCH BREAK', {
+        fontSize: '22px',
         color: '#ffffff',
         fontFamily: 'Arial',
-        align: 'center',
-        lineSpacing: 10,
-        wordWrap: { width: 650 }
+        fontStyle: 'bold'
       }).setOrigin(0.5);
+
+      lunchButton.on('pointerover', () => lunchButton.setFillStyle(0x777777));
+      lunchButton.on('pointerout', () => lunchButton.setFillStyle(0x555555));
+      lunchButton.on('pointerdown', () => {
+        lunchButton.disableInteractive();
+        this.scene.start('LunchScene', this.progression);
+      });
+
+      this.add.rectangle(width / 2 + 140, height / 2 + 40, 240, 60, 0x333333)
+        .setStrokeStyle(3, 0x777777);
+
+      this.add.text(width / 2 + 140, height / 2 + 40, 'HR\nCOMING SOON', {
+        fontSize: '18px',
+        color: '#888888',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+        align: 'center'
+      }).setOrigin(0.5);
+
+    } else {
+      this.add.text(width / 2, height / 2 + 20,
+        'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
+          fontSize: '18px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+        }).setOrigin(0.5);
+    }
 
     const button = this.add.rectangle(width / 2, height / 2 + 160, 220, 50, 0x555555)
       .setStrokeStyle(3, 0xffffff)
