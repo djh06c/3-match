@@ -19,8 +19,10 @@ export default class ProgressionScene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
+    const nextEncounterId = this.progression.completedEncounterId === 'printosaurus'
+      ? 'cardboardMimic' : null;
 
-    this.add.text(width / 2, height / 2 - 140, this.progression.completedEncounterId === 'joblin' ? 'TIME FOR A BREAK' : 'WORKDAY COMPLETE', {
+    this.add.text(width / 2, height / 2 - 140, this.progression.completedEncounterId === 'joblin' ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
       fontSize: '30px',
       color: '#ffffff',
       fontFamily: 'Arial',
@@ -76,9 +78,34 @@ export default class ProgressionScene extends Phaser.Scene {
         align: 'center'
       }).setOrigin(0.5);
 
+    } else if (nextEncounterId) {
+      this.add.text(width / 2, height / 2 - 30, 'NEXT: CARDBOARD MIMIC', {
+        fontSize: '20px', color: '#ffffff', fontFamily: 'Arial'
+      }).setOrigin(0.5);
+
+      const continueButton = this.add.rectangle(width / 2, height / 2 + 40,
+        240, 60, 0x555555)
+        .setStrokeStyle(3, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+      this.add.text(width / 2, height / 2 + 40, 'CONTINUE', {
+        fontSize: '22px', color: '#ffffff', fontFamily: 'Arial', fontStyle: 'bold'
+      }).setOrigin(0.5);
+      continueButton.on('pointerover', () => continueButton.setFillStyle(0x777777));
+      continueButton.on('pointerout', () => continueButton.setFillStyle(0x555555));
+      continueButton.on('pointerdown', () => {
+        continueButton.disableInteractive();
+        this.scene.start('MainScene', {
+          encounterId: nextEncounterId,
+          encounterIndex: this.progression.nextEncounterIndex,
+          playerMorale: this.progression.playerMorale,
+          playerMaxMorale: this.progression.playerMaxMorale
+        });
+      });
     } else {
       this.add.text(width / 2, height / 2 + 20,
-        'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
+        this.progression.completedEncounterId === 'cardboardMimic'
+          ? 'Next: Deadline Demon.\nThis boss encounter is coming soon.'
+          : 'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
           fontSize: '18px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
         }).setOrigin(0.5);
     }

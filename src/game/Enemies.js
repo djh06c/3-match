@@ -57,6 +57,43 @@ const enemies = {
       defeat: ['You got the job. The salary is competitive.']
     }
   },
+  cardboardMimic: {
+    id: 'cardboardMimic',
+    name: 'CARDBOARD MIMIC',
+    y: 135,
+    maxHP: 100,
+    baseDamage: 5,
+    damageIncrease: 0,
+    scale: 3,
+    hitDuration: 1000,
+    victoryText: 'DELIVERY HANDLED!',
+    textures: {
+      idle: 'MimicIdle', attack: 'MimicAttack',
+      hit: 'MimicIdle', death: 'MimicIdle', spawn: 'MimicOpening'
+    },
+    assets: [
+      { key: 'MimicIdle', path: new URL('../../assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicOpening', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicAttack', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+    ],
+    animations: {
+      idle: { key: 'mimic-idle', start: 0, end: 0, frameRate: 1, repeat: -1 },
+      spawn: { key: 'mimic-opening', start: 0, end: 6, frameRate: 8, repeat: 0 },
+      attack: { key: 'mimic-attack', start: 0, end: 15, frameRate: 10, repeat: 0 }
+    },
+    dialogue: {
+      intro: ['Special delivery. Please sign with your remaining morale.'],
+      badMove: ['Return to sender.'],
+      normalMove: ['Contents may have shifted.'],
+      goodMove: ['Handle with care!'],
+      greatMove: ['That was not covered by shipping insurance.'],
+      combo: ['One package at a time, please!'],
+      playerLowMorale: ['You look ready to be boxed up.'],
+      enemyLowHP: ['Some assembly required.'],
+      enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.'],
+      defeat: ['Package successfully delivered.']
+    }
+  },
   printosaurus: {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',

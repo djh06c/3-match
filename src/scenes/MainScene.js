@@ -356,7 +356,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemy = this.add.sprite(
       width * 0.75,
-      100,
+      this.enemyConfig.y ?? 100,
       this.enemyConfig.textures.idle,
       0
     );
