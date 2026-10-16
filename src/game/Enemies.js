@@ -60,26 +60,38 @@ const enemies = {
   cardboardMimic: {
     id: 'cardboardMimic',
     name: 'CARDBOARD MIMIC',
+    defeatClickMorale: 15,
     y: 135,
     maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
+    abilities: [
+      {
+        id: 'weakToOrganisation',
+        type: 'matchDamageReduction',
+        damagePerExtraTile: 1,
+        description: 'The Cardboard Mimic is weak to being organised. Matching 3 tiles makes its next attack deal 5 Morale damage. Each extra tile matched reduces that attack by 1 damage. Below 0, it restores that much Morale instead, up to your maximum. Tiles matched in cascades count too. The reduction resets for each move.'
+      }
+    ],
     scale: 3,
     hitDuration: 1000,
     victoryText: 'DELIVERY HANDLED!',
     textures: {
       idle: 'MimicIdle', attack: 'MimicAttack',
-      hit: 'MimicIdle', death: 'MimicIdle', spawn: 'MimicOpening'
+      hit: 'MimicIdle', death: 'MimicDeath', spawn: 'MimicOpening'
     },
     assets: [
       { key: 'MimicIdle', path: new URL('../../assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
       { key: 'MimicOpening', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicAttack', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'MimicAttack', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicDeath', path: new URL('../../assets/mobs/CardboardMimic/MimicDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'mimic-idle', start: 0, end: 0, frameRate: 1, repeat: -1 },
       spawn: { key: 'mimic-opening', start: 0, end: 6, frameRate: 8, repeat: 0 },
-      attack: { key: 'mimic-attack', start: 0, end: 15, frameRate: 10, repeat: 0 }
+      attack: { key: 'mimic-attack', start: 0, end: 15, frameRate: 10, repeat: 0 },
+      // Play only the ten drawn frames and leave the final pose visible.
+      death: { key: 'mimic-death', start: 0, end: 9, frameRate: 10, repeat: 0 }
     },
     dialogue: {
       intro: ['Special delivery. Please sign with your remaining morale.'],

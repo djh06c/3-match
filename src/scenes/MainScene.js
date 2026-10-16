@@ -150,6 +150,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
+    this.lastMoveTotalMatched = 0;
     const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
     this.nextInkAttack = inkAbility
       ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
@@ -183,15 +184,23 @@ export default class MainScene extends Phaser.Scene {
     // =====================================
 
     this.bobQuotes = [
-      'Placeholder 1',
-      'Placeholder 2',
-      'Placeholder 3',
-      'Placeholder 4',
-      'Placeholder 5',
-      'Placeholder 6'
+      'Wh... what?',
+      'Right. Okay.',
+      'Is this normal here?',
+      'Nobody mentioned this.',
+      'I need this job.',
+      'Just get through today.',
+      'Sure. I can handle this.',
+      "That's probably fine.",
+      'Do we have a procedure for this?',
+      'I should have read the handbook.',
+      'Please let this count as experience.',
+      "I'm putting this on my timesheet.",
+      'I could be working from home.'
     ];
 
-    this.bobQuoteIndex = 0;
+    this.remainingBobQuotes = [];
+    this.lastBobQuote = null;
 
     // =====================================
     // TOP / BATTLE AREA
@@ -1057,6 +1066,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     if (!freeMove) {
+      this.lastMoveTotalMatched = result.totalMatched;
       this.board.clearInk();
     }
 
@@ -1138,7 +1148,7 @@ export default class MainScene extends Phaser.Scene {
       );
 
       this.time.delayedCall(
-        this.enemyHitDuration,
+        Math.max(this.enemyHitDuration, 3000),
         () => {
           if (
             this.battleWon ||
@@ -1352,17 +1362,19 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
 
   getNextBobQuote() {
-    const quote =
-      this.bobQuotes[
-        this.bobQuoteIndex
-      ];
+    if (this.remainingBobQuotes.length === 0) {
+      this.remainingBobQuotes = Phaser.Utils.Array.Shuffle([...this.bobQuotes]);
+      // pop() reads from the end; avoid repeating the previous pool's final line.
+      const lastIndex = this.remainingBobQuotes.length - 1;
+      if (lastIndex > 0 && this.remainingBobQuotes[lastIndex] === this.lastBobQuote) {
+        const firstQuote = this.remainingBobQuotes[0];
+        this.remainingBobQuotes[0] = this.remainingBobQuotes[lastIndex];
+        this.remainingBobQuotes[lastIndex] = firstQuote;
+      }
+    }
 
-    this.bobQuoteIndex =
-      (
-        this.bobQuoteIndex + 1
-      ) %
-      this.bobQuotes.length;
-
+    const quote = this.remainingBobQuotes.pop();
+    this.lastBobQuote = quote;
     return quote;
   }
 
@@ -1836,9 +1848,13 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemyTurnDamage += damage;
 
-    this.damagePlayer(
-      damage
-    );
+    const healedMorale = damage < 0 ? Math.min(-damage, this.PlayerMaxHP - this.PlayerHP) : 0;
+    if (damage < 0) {
+      this.PlayerHP += healedMorale;
+      this.updatePlayerHealthBar();
+    } else {
+      this.damagePlayer(damage);
+    }
 
     if (
       this.PlayerHP <= 0
@@ -1898,6 +1914,8 @@ export default class MainScene extends Phaser.Scene {
     this.statusText.setText(
       inkAbility
         ? `${this.enemyConfig.name}: INK ATTACK! Tiles hidden for one turn.`
+        : damage < 0
+        ? `Organisation restored ${healedMorale} Morale!`
         : `${this.enemyConfig.name} gjorde ${this.enemyTurnDamage} morale damage!`
     );
   }
@@ -1909,6 +1927,13 @@ export default class MainScene extends Phaser.Scene {
   getEnemyAttackDamage() {
     if (this.fixedEnemyDamage !== null) {
       return this.fixedEnemyDamage;
+    }
+    const matchReduction = (this.enemyConfig.abilities ?? []).find(ability =>
+      ability.type === 'matchDamageReduction'
+    );
+    if (matchReduction) {
+      const extraTiles = Math.max(0, this.lastMoveTotalMatched - 3);
+      return this.enemyConfig.baseDamage - extraTiles * matchReduction.damagePerExtraTile;
     }
     // Increasing pressure rewards larger matches and cascades over basic matches.
     return this.enemyConfig.baseDamage + this.enemyAttackCount * this.enemyConfig.damageIncrease;
@@ -2061,6 +2086,21 @@ export default class MainScene extends Phaser.Scene {
           `animationcomplete-${this.enemyConfig.animations.death.key}`,
           () => {
             this.showGameWon();
+            if (this.enemyConfig.defeatClickMorale) {
+              // No cursor hint: closing the defeated box is a hidden, optional reward.
+              this.enemy.setInteractive();
+              this.enemy.once('pointerdown', () => {
+                if (this.resultTransitionActive) return;
+                this.enemy.disableInteractive();
+                this.enemy.playReverse(this.enemyConfig.animations.spawn.key);
+                const healedMorale = Math.min(this.enemyConfig.defeatClickMorale,
+                  this.PlayerMaxHP - this.PlayerHP);
+                // Apply on click so CONTINUE can carry the reward during the animation.
+                this.PlayerHP += healedMorale;
+                this.updatePlayerHealthBar();
+                this.statusText.setText(`Organisation complete! +${healedMorale} Morale.`);
+              });
+            }
           }
         );
 
