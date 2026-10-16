@@ -70,7 +70,7 @@ const enemies = {
         id: 'weakToOrganisation',
         type: 'matchDamageReduction',
         damagePerExtraTile: 1,
-        description: 'The Cardboard Mimic is weak to being organised. Matching 3 tiles makes its next attack deal 5 Morale damage. Each extra tile matched reduces that attack by 1 damage. Below 0, it restores that much Morale instead, up to your maximum. Tiles matched in cascades count too. The reduction resets for each move.'
+        description: 'The Cardboard Mimic is weak to being organised. Matching 3 tiles makes its next attack deal 5 Morale damage. Each extra tile matched reduces that attack by 1 damage. Below 0, it restores that much Morale instead, up to your maximum. Tiles matched in cascades count too.'
       }
     ],
     scale: 3,

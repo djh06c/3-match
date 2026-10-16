@@ -151,6 +151,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
     this.lastMoveTotalMatched = 0;
+    this.freeMoveTilesMatched = 0;
     const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
     this.nextInkAttack = inkAbility
       ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
@@ -768,7 +769,7 @@ export default class MainScene extends Phaser.Scene {
     this.registry.set('aiBoosters', this.aiBoosters);
     this.aiMenu = null;
     this.aiHint = null;
-    this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 1;
+    this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 2;
     this.freeAIMove = false;
     this.supervisorActive = false;
     this.suspicionRecovered = false;
@@ -824,12 +825,12 @@ export default class MainScene extends Phaser.Scene {
     const powerName = this.aiBoosters.selectedPower === 'moraleBoost' ? 'MORALE BOOST' : 'BEST MOVE';
     const effect = this.aiBoosters.selectedPower === 'moraleBoost'
       ? 'Recover 10 Morale. Keep your turn.'
-      : 'Highlights and plays a free swap.';
+      : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
     const suspicionCost = this.aiBoosters.selectedPower === 'moraleBoost'
       ? Math.min(10, this.PlayerMaxHP - this.PlayerHP)
-      : 20;
+      : 15;
     const label = this.add.text(400, 350,
-      `${powerName} - ${this.aiPowerUsesRemaining} uses left this fight\n${effect} +${suspicionCost} Suspicion`, {
+      `${powerName} - ${this.aiPowerUsesRemaining} uses left this fight\n${effect}\n+${suspicionCost} Suspicion per use.`, {
         fontSize: '16px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
       }).setOrigin(0.5);
     const close = this.add.text(400, 425, 'CLOSE', {
@@ -897,7 +898,7 @@ export default class MainScene extends Phaser.Scene {
         .setFillStyle(0xffffff, 0).setStrokeStyle(4, 0xffff00));
     }
 
-    this.finishAIPowerUse(20);
+    this.finishAIPowerUse(15);
     this.board.setState('AI_PREVIEW');
     this.statusText.setText('AI is playing a free move!');
     this.time.delayedCall(700, () => {
@@ -1065,8 +1066,12 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    if (!freeMove) {
-      this.lastMoveTotalMatched = result.totalMatched;
+    if (freeMove) {
+      this.freeMoveTilesMatched += result.totalMatched;
+    } else {
+      // Free AI matches contribute to the same response as the following normal move.
+      this.lastMoveTotalMatched = this.freeMoveTilesMatched + result.totalMatched;
+      this.freeMoveTilesMatched = 0;
       this.board.clearInk();
     }
 
@@ -1074,6 +1079,13 @@ export default class MainScene extends Phaser.Scene {
       this.calculateDamage(
         result
       );
+
+    if (freeMove) {
+      damageResult.totalDamage += 3;
+      damageResult.breakdown.push({
+        chain: 1, tileAmount: 1, damagePerTile: 3, damage: 3, type: 'AI bonus'
+      });
+    }
 
     this.turnDamage =
       damageResult.totalDamage;
@@ -2087,6 +2099,7 @@ export default class MainScene extends Phaser.Scene {
           () => {
             this.showGameWon();
             if (this.enemyConfig.defeatClickMorale) {
+              this.showBobSpeechBubble('I should clean up after myself');
               // No cursor hint: closing the defeated box is a hidden, optional reward.
               this.enemy.setInteractive();
               this.enemy.once('pointerdown', () => {

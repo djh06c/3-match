@@ -40,8 +40,8 @@ export default class LunchScene extends Phaser.Scene {
     this.add.circle(170, height / 2 - 15, 18, 0x111111);
     this.add.rectangle(170, height / 2 + 25, 38, 55, 0x111111);
 
-    const dialogue = this.add.text(width / 2, height - 185,
-      'MYSTERIOUS COLLEAGUE\nAI and its incredible uses...\nChoose one power. But remember: the Supervisor notices.', {
+    const dialogue = this.add.text(width / 2, height - 205,
+      'MYSTERIOUS COLLEAGUE\nHey there, new guy. Heard of the new AI made by Beta?\nIt’s called ClawedIMP.\nJust keep it quiet. The Supervisor notices.', {
       fontSize: '16px',
       color: '#ffffff',
       backgroundColor: '#222222',
@@ -52,7 +52,7 @@ export default class LunchScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const powers = [
-      { id: 'bestMove', uses: 1, title: 'BEST MOVE', text: 'Free swap. +20 Suspicion.' },
+      { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +15 Suspicion per use.' },
       { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. Suspicion = healing.' }
     ];
     const choiceButtons = [];
@@ -61,7 +61,7 @@ export default class LunchScene extends Phaser.Scene {
     for (let index = 0; index < powers.length; index++) {
       const power = powers[index];
       const x = width / 2 + (index === 0 ? -170 : 170);
-      const choiceButton = this.add.rectangle(x, height - 115, 320, 62, 0x555555)
+      const choiceButton = this.add.rectangle(x, height - 115, 320, 82, 0x555555)
         .setStrokeStyle(2, 0xffffff)
         .setInteractive({ useHandCursor: true });
       const choiceLabel = this.add.text(x, height - 115,
