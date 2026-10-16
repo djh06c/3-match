@@ -13,6 +13,9 @@ export default class LunchScene extends Phaser.Scene {
     // Import the room asset so Vite includes it in the production build.
     this.load.image('lunchRoom',
       new URL('../../assets/backgrounds/Frokost Stue.png', import.meta.url).href);
+    this.load.image('apple', new URL('../../assets/Food/Apple.png', import.meta.url).href);
+    this.load.image('banana', new URL('../../assets/Food/Banana.png', import.meta.url).href);
+    this.load.image('pear', new URL('../../assets/Food/Pear.png', import.meta.url).href);
   }
 
   create() {
@@ -29,12 +32,40 @@ export default class LunchScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, 120,
+    const moraleText = this.add.text(width / 2, 120,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
         fontSize: '20px',
         color: '#ffff88',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
+
+    // Surface positions use the original 160 x 80 background coordinates.
+    const tableSpots = [{ x: 20, y: 44 }, { x: 27, y: 44 }, { x: 45, y: 44 }, { x: 52, y: 44 }];
+    const deskSpots = [{ x: 127, y: 33 }, { x: 139, y: 33 }, { x: 151, y: 33 }];
+    Phaser.Utils.Array.Shuffle(tableSpots);
+    Phaser.Utils.Array.Shuffle(deskSpots);
+    const fruitSpots = [tableSpots.pop(), deskSpots.pop(),
+      ...Phaser.Utils.Array.Shuffle([...tableSpots, ...deskSpots])];
+    const fruitTypes = ['apple', 'banana', 'pear'];
+    const fruitCount = Phaser.Math.Between(3, 5);
+    const roomLeft = background.x - background.displayWidth / 2;
+    const roomTop = background.y - background.displayHeight / 2;
+
+    for (const spot of fruitSpots.slice(0, fruitCount)) {
+      const fruit = this.add.image(
+        roomLeft + (spot.x + Phaser.Math.Between(-1, 1)) * background.scaleX,
+        roomTop + spot.y * background.scaleY,
+        Phaser.Utils.Array.GetRandom(fruitTypes)
+      ).setDisplaySize(48, 48).setOrigin(0.5, 0.85)
+        .setInteractive({ useHandCursor: true, pixelPerfect: true });
+
+      fruit.once('pointerdown', () => {
+        this.progression.playerMorale = Math.min(this.progression.playerMaxMorale,
+          this.progression.playerMorale + 2);
+        moraleText.setText(`MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`);
+        fruit.destroy();
+      });
+    }
 
     // A silhouette stands in for the mysterious character until their art exists.
     this.add.circle(170, height / 2 - 15, 18, 0x111111);
