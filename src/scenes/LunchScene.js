@@ -9,6 +9,9 @@ export default class LunchScene extends Phaser.Scene {
     this.progression = data;
   }
 
+  // =====================================
+  // INDLÆSNING AF LOKALE OG FRUGT
+  // =====================================
   preload() {
     // Import the room asset so Vite includes it in the production build.
     this.load.image('lunchRoom',
@@ -18,6 +21,9 @@ export default class LunchScene extends Phaser.Scene {
     this.load.image('pear', new URL('../../assets/Food/Pear.png', import.meta.url).href);
   }
 
+  // =====================================
+  // FROKOSTLOKALE OG MORALE
+  // =====================================
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
@@ -39,7 +45,10 @@ export default class LunchScene extends Phaser.Scene {
         fontFamily: 'Arial'
       }).setOrigin(0.5);
 
-    // Surface positions use the original 160 x 80 background coordinates.
+    // =====================================
+    // FRUGT PÅ BORDENE
+    // =====================================
+    // Positionerne følger baggrundens oprindelige størrelse på 160 x 80 pixels.
     const tableSpots = [{ x: 20, y: 44 }, { x: 27, y: 44 }, { x: 45, y: 44 }, { x: 52, y: 44 }];
     const deskSpots = [{ x: 127, y: 33 }, { x: 139, y: 33 }, { x: 151, y: 33 }];
     Phaser.Utils.Array.Shuffle(tableSpots);
@@ -67,7 +76,10 @@ export default class LunchScene extends Phaser.Scene {
       });
     }
 
-    // A silhouette stands in for the mysterious character until their art exists.
+    // =====================================
+    // DEN MYSTISKE KOLLEGA
+    // =====================================
+    // Silhuetten bruges, indtil kollegaen har sin egen grafik.
     this.add.circle(170, height / 2 - 15, 18, 0x111111);
     this.add.rectangle(170, height / 2 + 25, 38, 55, 0x111111);
 
@@ -82,6 +94,9 @@ export default class LunchScene extends Phaser.Scene {
       wordWrap: { width: 620 }
     }).setOrigin(0.5);
 
+    // =====================================
+    // VALG AF AI-EVNE
+    // =====================================
     const powers = [
       { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +15 Suspicion per use.' },
       { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. Suspicion = healing.' }
@@ -120,6 +135,9 @@ export default class LunchScene extends Phaser.Scene {
       if (index >= 0) choiceLabels[index].setText(`${powers[index].title} SELECTED`);
     }
 
+    // =====================================
+    // FORTSÆT TIL NÆSTE KAMP
+    // =====================================
     const button = this.add.rectangle(width / 2, height - 50, 220, 44, 0x555555)
       .setStrokeStyle(3, 0xffffff)
       .setInteractive({ useHandCursor: true });

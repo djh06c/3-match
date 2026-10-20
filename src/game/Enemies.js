@@ -1,5 +1,11 @@
-// Enemy content lives here so encounters can share MainScene.
+// =====================================
+// MOBS OPSÆTNING
+// =====================================
+// Mobs indhold samles her, og bruges i samme kampscene
 const enemies = {
+  // =====================================
+  // JOBLIN
+  // =====================================
   joblin: {
     id: 'joblin',
     name: 'JOBLIN',
@@ -57,6 +63,9 @@ const enemies = {
       defeat: ['You got the job. The salary is competitive.']
     }
   },
+  // =====================================
+  // CARDBOARD MIMI
+  // =====================================
   cardboardMimic: {
     id: 'cardboardMimic',
     name: 'CARDBOARD MIMIC',
@@ -90,7 +99,7 @@ const enemies = {
       idle: { key: 'mimic-idle', start: 0, end: 0, frameRate: 1, repeat: -1 },
       spawn: { key: 'mimic-opening', start: 0, end: 6, frameRate: 8, repeat: 0 },
       attack: { key: 'mimic-attack', start: 0, end: 15, frameRate: 10, repeat: 0 },
-      // Play only the ten drawn frames and leave the final pose visible.
+      // låser sidste frame efter death
       death: { key: 'mimic-death', start: 0, end: 9, frameRate: 10, repeat: 0 }
     },
     dialogue: {
@@ -106,6 +115,9 @@ const enemies = {
       defeat: ['Package successfully delivered.']
     }
   },
+  // =====================================
+  // PRINTOSAURUS
+  // =====================================
   printosaurus: {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',

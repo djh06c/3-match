@@ -1,9 +1,15 @@
+// =====================================
+// IMPORT AF SCENER OG SPILMOTOR
+// =====================================
 import Phaser from 'phaser';
 import MainScene from './scenes/MainScene.js';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import ProgressionScene from './scenes/ProgressionScene.js';
 import LunchScene from './scenes/LunchScene.js';
 
+// =====================================
+// SPILLETS OPSÆTNING
+// =====================================
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
@@ -25,4 +31,7 @@ const config = {
 
 
 
+// =====================================
+// START SPILLET
+// =====================================
 new Phaser.Game(config);

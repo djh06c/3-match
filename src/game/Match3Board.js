@@ -5,9 +5,9 @@ export default class Match3Board {
   constructor(scene, config = {}) {
     this.scene = scene;
 
-    // =====================================================
-    // CONFIG
-    // =====================================================
+    // =====================================
+    // OPSÆTNING
+    // =====================================
 
     this.rows = config.rows ?? 8;
     this.cols = config.cols ?? 8;
@@ -25,9 +25,9 @@ export default class Match3Board {
     this.onStateChange =
       config.onStateChange ?? null;
 
-    // =====================================================
-    // STATE
-    // =====================================================
+    // =====================================
+    // TILSTAND
+    // =====================================
 
     this.state = 'IDLE';
 
@@ -38,9 +38,9 @@ export default class Match3Board {
     this.dragStartTile = null;
     this.dragSwapTriggered = false;
 
-    // =====================================================
-    // TILE APPEARANCE
-    // =====================================================
+    // =====================================
+    // BRIKKERNES UDSEENDE
+    // =====================================
 
     this.tileColors =
       config.tileColors ?? [
@@ -62,9 +62,9 @@ export default class Match3Board {
         'clock'
       ];
 
-    // =====================================================
-    // GRID
-    // =====================================================
+    // =====================================
+    // DET LOGISKE SPILLEBRÆT
+    // =====================================
 
     this.grid = new Match3Grid(
       this.rows,
@@ -74,9 +74,9 @@ export default class Match3Board {
 
     this.grid.generateGrid();
 
-    // =====================================================
-    // PHASER OBJECTS
-    // =====================================================
+    // =====================================
+    // PHASER-OBJEKTER
+    // =====================================
 
     this.container =
       this.scene.add.container(
@@ -84,9 +84,9 @@ export default class Match3Board {
         0
       );
 
-    // =====================================================
-    // BOARD MASK
-    // =====================================================
+    // =====================================
+    // AFGRÆNSNING AF SPILLEBRÆTTET
+    // =====================================
 
     /*
      * Masken gør, at tiles kun kan ses
@@ -123,9 +123,9 @@ export default class Match3Board {
       this.boardMask
     );
 
-    // =====================================================
-    // TILE VIEWS
-    // =====================================================
+    // =====================================
+    // TILES GRAFIK
+    // =====================================
 
     this.tileViews =
       Array.from(
@@ -155,10 +155,13 @@ export default class Match3Board {
     );
   }
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  // =====================================
+  // TILSTAND
+  // =====================================
 
+  // =====================================
+  // INK PÅ BRIKKERNE
+  // =====================================
   coverTilesWithInk(count) {
     this.clearInk();
     const tiles = this.tileViews.flat().filter(tile => tile);
@@ -197,9 +200,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // INITIAL BOARD
-  // =====================================================
+  // =====================================
+  // OPRETTELSE AF DE FØRSTE TILES
+  // =====================================
 
   createInitialTiles() {
     for (
@@ -239,9 +242,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // TILE CREATION
-  // =====================================================
+  // =====================================
+  // OPRETTELSE AF EN TILE
+  // =====================================
 
   createTileView(
     value,
@@ -260,9 +263,9 @@ export default class Match3Board {
     tile.gridCol = col;
     tile.tileValue = value;
 
-    // -------------------------
-    // Background / border
-    // -------------------------
+    // =====================================
+    // BAGGRUND OG RAMME
+    // =====================================
 
     const background =
       this.scene.add.rectangle(
@@ -285,9 +288,9 @@ export default class Match3Board {
       background
     );
 
-    // -------------------------
-    // Icon
-    // -------------------------
+    // =====================================
+    // IKON
+    // =====================================
 
     const texture =
       this.tileTextures[
@@ -337,9 +340,9 @@ export default class Match3Board {
       );
     }
 
-    // -------------------------
-    // Input zone
-    // -------------------------
+    // =====================================
+    // KLIKOMRÅDE
+    // =====================================
 
     const hitZone =
       this.scene.add.rectangle(
@@ -399,9 +402,9 @@ export default class Match3Board {
     return tile;
   }
 
-  // =====================================================
-  // POSITION
-  // =====================================================
+  // =====================================
+  // PLACERING
+  // =====================================
 
   getCellPosition(
     row,
@@ -420,9 +423,9 @@ export default class Match3Board {
     };
   }
 
-  // =====================================================
-  // POINTER INPUT
-  // =====================================================
+  // =====================================
+  // MUS OG BERØRING
+  // =====================================
 
   handlePointerDown(
     tile,
@@ -530,9 +533,9 @@ export default class Match3Board {
     this.dragSwapTriggered = false;
   }
 
-  // =====================================================
-  // CLICK-TO-SWAP
-  // =====================================================
+  // =====================================
+  // BYT BRIKKER MED KLIK
+  // =====================================
 
   async handleTileClick(
     row,
@@ -603,9 +606,9 @@ export default class Match3Board {
     );
   }
 
-  // =====================================================
-  // UNIVERSAL SWAP
-  // =====================================================
+  // =====================================
+  // FÆLLES BRIKBYT
+  // =====================================
 
   async performSwap(
     firstRow,
@@ -644,18 +647,18 @@ export default class Match3Board {
       return;
     }
 
-    // -------------------------
-    // Visuel swap
-    // -------------------------
+    // =====================================
+    // ANIMERET BRIKBYT
+    // =====================================
 
     await this.animateSwap(
       tileA,
       tileB
     );
 
-    // -------------------------
-    // Logisk swap
-    // -------------------------
+    // =====================================
+    // LOGISK BRIKBYT
+    // =====================================
 
     const success =
       this.grid.trySwap(
@@ -665,9 +668,9 @@ export default class Match3Board {
         secondCol
       );
 
-    // -------------------------
-    // Ugyldigt move
-    // -------------------------
+    // =====================================
+    // UGYLDIGT TRÆK
+    // =====================================
 
     if (
       !success
@@ -699,9 +702,9 @@ export default class Match3Board {
       return;
     }
 
-    // -------------------------
-    // Opdatér tileViews
-    // -------------------------
+    // =====================================
+    // OPDATERING AF BRIKKERNES GRAFIK
+    // =====================================
 
     this.tileViews
       [firstRow]
@@ -723,16 +726,16 @@ export default class Match3Board {
       secondCol
     );
 
-    // -------------------------
-    // Resolve
-    // -------------------------
+    // =====================================
+    // AFVIKLING AF MATCH
+    // =====================================
 
     await this.resolveBoard();
   }
 
-  // =====================================================
-  // SELECTION VISUAL
-  // =====================================================
+  // =====================================
+  // MARKERING AF VALGTE BRIKKER
+  // =====================================
 
   updateSelectionVisuals() {
     for (
@@ -780,9 +783,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // SWAP ANIMATION
-  // =====================================================
+  // =====================================
+  // ANIMATION AF BRIKBYT
+  // =====================================
 
   async animateSwap(
     tileA,
@@ -823,9 +826,9 @@ export default class Match3Board {
     ]);
   }
 
-  // =====================================================
-  // RESOLVE BOARD
-  // =====================================================
+  // =====================================
+  // AFVIKLING AF SPILLEBRÆTTET
+  // =====================================
 
   async resolveBoard() {
     let chainCount = 0;
@@ -878,9 +881,9 @@ export default class Match3Board {
           matchesWithTypes
       });
 
-      // -------------------------
-      // Pop matches
-      // -------------------------
+      // =====================================
+      // FJERNELSE AF MATCHEDE BRIKKER
+      // =====================================
 
       this.setState(
         'REMOVING'
@@ -890,9 +893,9 @@ export default class Match3Board {
         matches
       );
 
-      // -------------------------
-      // Gravity / refill
-      // -------------------------
+      // =====================================
+      // FALD OG GENOPFYLDNING
+      // =====================================
 
       const changes =
         this.grid.collapseAndRefill(
@@ -915,9 +918,9 @@ export default class Match3Board {
     const hasValidMoves =
       this.grid.hasValidMoves();
 
-    // -------------------------
-    // GAME OVER
-    // -------------------------
+    // =====================================
+    // SPILLET ER SLUT
+    // =====================================
 
     if (
       !hasValidMoves
@@ -956,9 +959,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // MATCH ANIMATION
-  // =====================================================
+  // =====================================
+  // ANIMATION AF MATCH
+  // =====================================
 
   async animateMatches(
     matches
@@ -1043,9 +1046,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // GRAVITY / REFILL
-  // =====================================================
+  // =====================================
+  // FALD OG GENOPFYLDNING
+  // =====================================
 
   async animateCollapseAndRefill(
     changes
@@ -1077,9 +1080,9 @@ export default class Match3Board {
 
     const animations = [];
 
-    // -------------------------
-    // Existing tiles
-    // -------------------------
+    // =====================================
+    // EKSISTERENDE BRIKKER
+    // =====================================
 
     for (
       let row = 0;
@@ -1161,9 +1164,9 @@ export default class Match3Board {
       }
     }
 
-    // -------------------------
-    // Spawn new tiles
-    // -------------------------
+    // =====================================
+    // NYE BRIKKER
+    // =====================================
 
     for (
       const spawn
@@ -1261,9 +1264,9 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // INITIAL DROP
-  // =====================================================
+  // =====================================
+  // BRIKKERNES FALD VED SPILSTART
+  // =====================================
 
   async playInitialDrop(endState = 'IDLE') {
     /*
@@ -1348,9 +1351,9 @@ export default class Match3Board {
     );
   }
 
-  // =====================================================
-  // GAME OVER DROP
-  // =====================================================
+  // =====================================
+  // BRIKKERNES FALD VED NEDERLAG
+  // =====================================
 
   async playGameOverDrop() {
     const animations = [];
@@ -1411,9 +1414,9 @@ export default class Match3Board {
     );
   }
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
+  // =====================================
+  // HJÆLPEFUNKTIONER
+  // =====================================
 
   updateTilePositionData(
     tile,

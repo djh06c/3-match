@@ -5,6 +5,9 @@ export default class ProgressionScene extends Phaser.Scene {
     super('ProgressionScene');
   }
 
+  // =====================================
+  // OVERFØRSEL AF KAMPAGNENS TILSTAND
+  // =====================================
   init(data = {}) {
     // Keep the handoff independent of enemy-specific combat presentation.
     // Future rewards/rest and the next encounter can consume this state.
@@ -16,6 +19,9 @@ export default class ProgressionScene extends Phaser.Scene {
     };
   }
 
+  // =====================================
+  // VISNING AF NÆSTE KAMPAGNETRIN
+  // =====================================
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
@@ -37,6 +43,9 @@ export default class ProgressionScene extends Phaser.Scene {
         fontFamily: 'Arial'
       }).setOrigin(0.5);
 
+    // =====================================
+    // PAUSE EFTER JOBLIN
+    // =====================================
     if (this.progression.completedEncounterId === 'joblin') {
       this.add.text(width / 2, height / 2 - 30,
         'Where would you like to go?', {
@@ -110,6 +119,9 @@ export default class ProgressionScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
+    // =====================================
+    // TILBAGE TIL HOVEDMENUEN
+    // =====================================
     const button = this.add.rectangle(width / 2, height / 2 + 160, 220, 50, 0x555555)
       .setStrokeStyle(3, 0xffffff)
       .setInteractive({ useHandCursor: true });

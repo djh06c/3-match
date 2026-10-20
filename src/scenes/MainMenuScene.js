@@ -5,6 +5,9 @@ export default class MainMenuScene extends Phaser.Scene {
     super('MainMenuScene');
   }
 
+  // =====================================
+  // INDLÆSNING AF GRAFIK
+  // =====================================
   preload() {
     // Main menu background animation
     // Antager 30 frames og 148x126 pr frame
@@ -56,7 +59,7 @@ export default class MainMenuScene extends Phaser.Scene {
     background.play('main-menu-bg');
 
     // =====================================
-    // NEW GAME KNAP
+    // KNAP TIL NYT SPIL
     // =====================================
 
     // Jeg har placeret den nede ved
@@ -108,7 +111,12 @@ export default class MainMenuScene extends Phaser.Scene {
         selectedPower: null,
         suspicion: 0
       });
-      this.scene.start('MainScene');
+      this.scene.start('MainScene', {
+        encounterId: 'joblin',
+        encounterIndex: 0,
+        playerMorale: 100,
+        playerMaxMorale: 100
+      });
     });
   }
 }

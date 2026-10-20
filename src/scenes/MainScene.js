@@ -7,6 +7,9 @@ export default class MainScene extends Phaser.Scene {
     super('MainScene');
   }
 
+  // =====================================
+  // MODTAGELSE AF KAMPENS DATA
+  // =====================================
   init(data = {}) {
     this.encounterId = data.encounterId ?? 'joblin';
     this.encounterIndex = data.encounterIndex ?? 0;
@@ -25,7 +28,7 @@ export default class MainScene extends Phaser.Scene {
     this.load.image('aiChip',
       new URL('../../assets/icons/Chip - AI.png', import.meta.url).href);
     // =====================================
-    // MATCH-3 ICONS
+    // IKONER TIL MATCH-3
     // =====================================
 
     this.load.image(
@@ -59,7 +62,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // BACKGROUNDS
+    // BAGGRUNDE
     // =====================================
 
     this.load.image(
@@ -73,7 +76,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // BOB
+    // BOBS GRAFIK
     // =====================================
 
     this.load.image(
@@ -118,7 +121,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // ENEMY
+    // FJENDENS GRAFIK
     // =====================================
 
     for (const asset of this.enemyConfig.assets) {
@@ -137,7 +140,7 @@ export default class MainScene extends Phaser.Scene {
     const width = this.scale.width;
 
     // =====================================
-    // BATTLE STATE
+    // KAMPENS TILSTAND
     // =====================================
 
     this.battleWon = false;
@@ -172,16 +175,18 @@ export default class MainScene extends Phaser.Scene {
     this.bobSpeechBubble = null;
 
     // =====================================
-    // ENEMY QUOTES
+    // FJENDENS DIALOG
     // =====================================
 
     this.enemyDialogueTimer = null;
     this.bobDialogueTimer = null;
+    this.enemyTypingTimer = null;
+    this.bobTypingTimer = null;
     this.playerLowMoraleShown = false;
     this.enemyLowHPShown = false;
 
     // =====================================
-    // BOB QUOTES
+    // BOBS REPLIKKER
     // =====================================
 
     this.bobQuotes = [
@@ -204,7 +209,7 @@ export default class MainScene extends Phaser.Scene {
     this.lastBobQuote = null;
 
     // =====================================
-    // TOP / BATTLE AREA
+    // KAMPOMRÅDET ØVERST
     // =====================================
 
     this.topAreaHeight = 240;
@@ -224,7 +229,7 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(0);
 
     // =====================================
-    // BOB ANIMATIONS
+    // BOBS ANIMATIONER
     // =====================================
 
     if (
@@ -316,7 +321,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // =====================================
-    // PLAYER / BOB
+    // SPILLEREN BOB
     // =====================================
 
     this.player = this.add.sprite(
@@ -341,7 +346,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // ENEMY ANIMATIONS
+    // FJENDENS ANIMATIONER
     // =====================================
 
     for (const action of Object.keys(this.enemyConfig.animations)) {
@@ -361,7 +366,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // =====================================
-    // ENEMY
+    // FJENDENS GRAFIK
     // =====================================
 
     this.enemy = this.add.sprite(
@@ -386,7 +391,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // HP / MORALE
+    // LIV OG MORALE
     // =====================================
 
     this.PlayerMaxHP = this.startingMaxMorale;
@@ -396,7 +401,7 @@ export default class MainScene extends Phaser.Scene {
     this.EnemyHP = this.EnemyMaxHP;
 
     // =====================================
-    // PLAYER NAME
+    // SPILLERENS NAVN
     // =====================================
 
     this.playerNameText =
@@ -415,7 +420,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(10);
 
     // =====================================
-    // ENEMY NAME
+    // FJENDENS NAVN
     // =====================================
 
     this.enemyNameText =
@@ -434,7 +439,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(10);
 
     // =====================================
-    // ENEMY ABILITY INFO
+    // INFORMATION OM FJENDENS EVNER
     // =====================================
 
     const abilityDescriptions = (this.enemyConfig.abilities ?? [])
@@ -477,7 +482,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // =====================================
-    // PLAYER MORALE BAR
+    // SPILLERENS MORALEBJÆLKE
     // =====================================
 
     this.playerHpBarBackground =
@@ -518,7 +523,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(12);
 
     // =====================================
-    // ENEMY HEALTH BAR
+    // FJENDENS LIVSBJÆLKE
     // =====================================
 
     this.enemyHpBarBackground =
@@ -559,7 +564,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(12);
 
     // =====================================
-    // DIVIDER
+    // ADSKILLELSE AF KAMP OG SPILLEBRÆT
     // =====================================
 
     this.add.rectangle(
@@ -571,7 +576,7 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
-    // MATCH-3 BACKGROUND
+    // SPILLEBRÆTTETS BAGGRUND
     // =====================================
 
     const match3Background =
@@ -586,18 +591,19 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(0);
 
     // =====================================
-    // DAMAGE DISPLAY
+    // VISNING AF SKADE
     // =====================================
 
     this.turnDamage = 0;
     this.damageBreakdown = [];
+    this.damageHistory = [];
 
     const damageCenterX = 704;
 
     this.damageTitle =
       this.add.text(
         damageCenterX,
-        this.topAreaHeight + 60,
+        this.topAreaHeight + 54,
         'DAMAGE',
         {
           fontSize: '16px',
@@ -613,7 +619,7 @@ export default class MainScene extends Phaser.Scene {
     this.damageCalculationText =
       this.add.text(
         damageCenterX,
-        this.topAreaHeight + 86,
+        this.topAreaHeight + 80,
         '',
         {
           fontSize: '11px',
@@ -622,7 +628,7 @@ export default class MainScene extends Phaser.Scene {
             'Arial, sans-serif',
           fontStyle: 'bold',
           align: 'center',
-          lineSpacing: 6,
+          lineSpacing: 11,
 
           wordWrap: {
             width: 150
@@ -635,7 +641,7 @@ export default class MainScene extends Phaser.Scene {
     this.damageTotalText =
       this.add.text(
         damageCenterX,
-        this.topAreaHeight + 315,
+        this.topAreaHeight + 309,
         'TOTAL: 0',
         {
           fontSize: '15px',
@@ -650,7 +656,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(10);
 
     // =====================================
-    // STATUS
+    // STATUSBESKED
     // =====================================
 
     this.statusText =
@@ -667,7 +673,7 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(10);
 
     // =====================================
-    // BOARD
+    // SPILLEBRÆTTET
     // =====================================
 
     const tileSize = 52;
@@ -739,6 +745,9 @@ export default class MainScene extends Phaser.Scene {
     this.startEncounter();
   }
 
+  // =====================================
+  // KAMPSTART OG FJENDENS INTRODUKTION
+  // =====================================
   async startEncounter() {
     const spawn = this.enemyConfig.animations.spawn;
     if (spawn) {
@@ -760,6 +769,9 @@ export default class MainScene extends Phaser.Scene {
     this.showEnemyDialogue('intro');
   }
 
+  // =====================================
+  // AI-KNAP OG MISTANKEBJÆLKE
+  // =====================================
   createAIControls() {
     this.aiBoosters = this.registry.get('aiBoosters') ?? {
       unlocked: false, selectedPower: null, suspicion: 0
@@ -803,6 +815,9 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
+  // =====================================
+  // MENU MED AI-EVNER
+  // =====================================
   openAIMenu() {
     if (this.board.state !== 'IDLE' || this.battleWon || this.battleLost || this.supervisorActive) {
       return;
@@ -855,6 +870,9 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
+  // =====================================
+  // AI-EVNE: BEDSTE TRÆK
+  // =====================================
   useBestMove() {
     if (this.board.state !== 'AI_MENU' || this.aiPowerUsesRemaining <= 0 || this.supervisorActive ||
         this.aiBoosters.selectedPower !== 'bestMove' ||
@@ -910,6 +928,9 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  // =====================================
+  // AI-EVNE: GENDANNELSE AF MORALE
+  // =====================================
   useMoraleBoost() {
     if (this.board.state !== 'AI_MENU' || this.aiPowerUsesRemaining <= 0 || this.supervisorActive ||
         this.aiBoosters.selectedPower !== 'moraleBoost' || this.battleWon || this.battleLost) {
@@ -927,6 +948,9 @@ export default class MainScene extends Phaser.Scene {
     this.statusText.setText('Recovered up to 10 Morale. Your turn continues!');
   }
 
+  // =====================================
+  // FORBRUG AF AI OG STIGNING I MISTANKE
+  // =====================================
   finishAIPowerUse(suspicionCost) {
     this.aiPowerUsesRemaining--;
     this.aiBoosters.suspicion = Math.min(100, this.aiBoosters.suspicion + suspicionCost);
@@ -939,6 +963,9 @@ export default class MainScene extends Phaser.Scene {
     }
   }
 
+  // =====================================
+  // SUPERVISORENS INDGRIBEN
+  // =====================================
   startSupervisorIntervention() {
     if (this.supervisorActive || this.battleWon || this.battleLost) return;
 
@@ -958,6 +985,9 @@ export default class MainScene extends Phaser.Scene {
     this.time.delayedCall(8000, () => message.destroy());
   }
 
+  // =====================================
+  // FALD I MISTANKE EFTER KAMPEN
+  // =====================================
   recoverSuspicionAfterFight() {
     // Both result paths can show a result more than once; recovery happens only once.
     if (this.suspicionRecovered) return;
@@ -969,7 +999,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOARD STATE
+  // SPILLEBRÆTTETS TILSTAND
   // =====================================
 
   handleBoardState(state) {
@@ -1037,7 +1067,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // MOVE RESULT
+  // RESULTAT AF SPILLERENS TRÆK
   // =====================================
 
   handleMoveComplete(result) {
@@ -1096,7 +1126,7 @@ export default class MainScene extends Phaser.Scene {
     this.renderDamage();
 
     // =====================================
-    // BOB ATTACK
+    // BOBS ANGREB
     // =====================================
 
     this.playPlayerAttackAnimation();
@@ -1136,7 +1166,7 @@ export default class MainScene extends Phaser.Scene {
     this.playerMoveCount++;
 
     // =====================================
-    // ENEMY ATTACK AFTER EACH VALID MOVE
+    // FJENDENS SVAR PÅ ET GYLDIGT TRÆK
     // =====================================
 
     if (
@@ -1191,7 +1221,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DAMAGE CALCULATION
+  // BEREGNING AF SKADE
   // =====================================
 
   calculateDamage(result) {
@@ -1269,38 +1299,43 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // RENDER DAMAGE
+  // VISNING AF SKADEBEREGNINGEN
   // =====================================
 
   renderDamage() {
     if (
       this.damageBreakdown.length === 0
     ) {
-      this.damageCalculationText
-        .setText('');
-
-      this.damageTotalText
-        .setText('TOTAL: 0');
-
       return;
     }
 
-    const lines =
-      this.damageBreakdown.map(
-        entry => {
-          return (
-            `${entry.tileAmount}x ` +
-            `${entry.type}` +
-            ` x${entry.damagePerTile}` +
-            ` = ${entry.damage}`
-          );
-        }
-      );
+    let totalTiles = 0;
+    let tileDamage = 0;
+    let aiBonus = 0;
+    for (const entry of this.damageBreakdown) {
+      if (entry.type === 'AI bonus') {
+        aiBonus += entry.damage;
+      } else {
+        totalTiles += entry.tileAmount;
+        tileDamage += entry.damage;
+      }
+    }
 
-    this.damageCalculationText
-      .setText(
-        lines.join('\n')
-      );
+    const lines = [`${totalTiles} tile = ${tileDamage} DMG`];
+    if (aiBonus > 0) {
+      lines.push(`AI bonus = ${aiBonus} DMG`);
+    }
+
+    this.damageHistory.push(...lines);
+    this.damageCalculationText.setText(this.damageHistory.join('\n'));
+
+    // Fjern de ældste linjer, når historikken når ned til totalfeltet.
+    const availableHeight = this.damageTotalText.y - this.damageTotalText.height / 2
+      - this.damageCalculationText.y - 10;
+    while (this.damageHistory.length > 1 && this.damageCalculationText.height > availableHeight) {
+      this.damageHistory.shift();
+      this.damageCalculationText.setText(this.damageHistory.join('\n'));
+    }
 
     this.damageTotalText
       .setText(
@@ -1309,7 +1344,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOB ATTACK
+  // BOBS ANGREB
   // =====================================
 
   playPlayerAttackAnimation() {
@@ -1370,7 +1405,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOB QUOTES
+  // BOBS REPLIKKER
   // =====================================
 
   getNextBobQuote() {
@@ -1391,7 +1426,24 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOB SPEECH BUBBLE
+  // SKRIVEEFFEKT I TALEBOBLER
+  // =====================================
+  typeSpeechText(text, message) {
+    let characterCount = 0;
+    return this.time.addEvent({
+      delay: 25,
+      // Give the bubble's 150 ms entrance time to finish before typing.
+      startAt: -150,
+      repeat: message.length - 1,
+      callback: () => {
+        characterCount++;
+        text.setText(message.slice(0, characterCount));
+      }
+    });
+  }
+
+  // =====================================
+  // BOBS TALEBOBLE
   // =====================================
 
   showBobSpeechBubble(message) {
@@ -1530,6 +1582,9 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Back.Out'
     });
 
+    text.setText('');
+    this.bobTypingTimer = this.typeSpeechText(text, message);
+
     this.bobSpeechBubble =
       container;
 
@@ -1539,10 +1594,12 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // HIDE BOB SPEECH BUBBLE
+  // FJERNELSE AF BOBS TALEBOBLE
   // =====================================
 
   hideBobSpeechBubble() {
+    this.bobTypingTimer?.remove();
+    this.bobTypingTimer = null;
     if (this.bobDialogueTimer) {
       this.bobDialogueTimer.remove();
       this.bobDialogueTimer = null;
@@ -1562,7 +1619,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // START ENEMY TURN
+  // START PÅ FJENDENS TUR
   // =====================================
 
   startEnemyTurn() {
@@ -1624,7 +1681,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY QUOTES
+  // FJENDENS DIALOG
   // =====================================
 
   showEnemyDialogue(event) {
@@ -1645,7 +1702,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY SPEECH BUBBLE
+  // FJENDENS TALEBOBLE
   // =====================================
 
   showEnemySpeechBubble(message) {
@@ -1772,15 +1829,20 @@ export default class MainScene extends Phaser.Scene {
       ease: 'Back.Out'
     });
 
+    text.setText('');
+    this.enemyTypingTimer = this.typeSpeechText(text, message);
+
     this.enemySpeechBubble =
       container;
   }
 
   // =====================================
-  // HIDE JOBLIN SPEECH BUBBLE
+  // FJERNELSE AF FJENDENS TALEBOBLE
   // =====================================
 
   hideEnemySpeechBubble() {
+    this.enemyTypingTimer?.remove();
+    this.enemyTypingTimer = null;
     if (this.enemyDialogueTimer) {
       this.enemyDialogueTimer.remove();
       this.enemyDialogueTimer = null;
@@ -1800,7 +1862,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY ATTACK
+  // FJENDENS ANGREB
   // =====================================
 
   playEnemyAttackAnimation() {
@@ -1842,7 +1904,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // FINISH ENEMY ATTACK
+  // AFSLUTNING AF FJENDENS ANGREB
   // =====================================
 
   finishEnemyAttack() {
@@ -1933,7 +1995,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY DAMAGE
+  // BEREGNING AF FJENDENS SKADE
   // =====================================
 
   getEnemyAttackDamage() {
@@ -1952,7 +2014,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY TAKE DAMAGE
+  // FJENDENS REAKTION PÅ SKADE
   // =====================================
 
   playEnemyHitAnimation() {
@@ -2035,7 +2097,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY DEATH
+  // FJENDENS DØDSANIMATION
   // =====================================
 
   playEnemyDeathAnimation() {
@@ -2130,7 +2192,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOB TAKE DAMAGE
+  // BOBS REAKTION PÅ SKADE
   // =====================================
 
   playPlayerHitAnimation() {
@@ -2211,7 +2273,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // BOB DEATH
+  // BOBS DØDSANIMATION
   // =====================================
 
   playPlayerDeathAnimation() {
@@ -2278,7 +2340,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // ENEMY DAMAGE NUMBER
+  // SKADETAL OVER FJENDEN
   // =====================================
 
   showEnemyDamageNumber(amount) {
@@ -2337,7 +2399,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // PLAYER MORALE DAMAGE NUMBER
+  // MORALETAB OVER SPILLEREN
   // =====================================
 
   showPlayerMoraleLoss(amount) {
@@ -2396,7 +2458,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // WIN BATTLE
+  // SEJR I KAMPEN
   // =====================================
 
   winBattle() {
@@ -2445,7 +2507,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // LOSE BATTLE
+  // NEDERLAG I KAMPEN
   // =====================================
 
   loseBattle() {
@@ -2482,7 +2544,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // GAME WON
+  // SEJRSSKÆRM
   // =====================================
 
   showGameWon() {
@@ -2526,7 +2588,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // GAME OVER
+  // SPILLET ER SLUT
   // =====================================
 
   showGameOver() {
@@ -2579,6 +2641,9 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  // =====================================
+  // KNAPPER PÅ RESULTATSKÆRMEN
+  // =====================================
   addResultButton(x, y, label, onClick) {
     const button = this.add.rectangle(x, y, 220, 50, 0x555555, 0.95)
       .setStrokeStyle(3, 0xffffff)
@@ -2605,7 +2670,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // MERGE OVERLAPPING MATCHES
+  // SAMMENLÆGNING AF OVERLAPPENDE MATCH
   // =====================================
 
   mergeConnectedMatches(matches) {
@@ -2729,7 +2794,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // SET OVERLAP
+  // KONTROL AF OVERLAP MELLEM MÆNGDER
   // =====================================
 
   setsOverlap(
@@ -2753,7 +2818,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // HEALTH
+  // OPDATERING AF LIV OG MORALE
   // =====================================
 
   updateEnemyHealthBar() {
@@ -2797,7 +2862,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DAMAGE ENEMY
+  // SKADE PÅ FJENDEN
   // =====================================
 
   damageEnemy(amount) {
@@ -2821,7 +2886,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DAMAGE PLAYER
+  // MORALETAB HOS SPILLEREN
   // =====================================
 
   damagePlayer(amount) {
