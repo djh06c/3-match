@@ -17,12 +17,12 @@ export default class HRScene extends Phaser.Scene {
   // =====================================
   preload() {
     this.load.image('hrOfficeStart',
-      new URL('../../assets/backgrounds/HRofficeStatic1.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRofficeStatic1.png');
     this.load.spritesheet('hrOfficeAnimation',
-      new URL('../../assets/backgrounds/HRoffice.png', import.meta.url).href,
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRoffice.png',
       { frameWidth: 120, frameHeight: 100 });
     this.load.image('hrOfficeEnd',
-      new URL('../../assets/backgrounds/HRofficeStatic2.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRofficeStatic2.png');
   }
 
   // =====================================

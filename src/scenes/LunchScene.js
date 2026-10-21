@@ -15,12 +15,12 @@ export default class LunchScene extends Phaser.Scene {
   preload() {
     // Import the room asset so Vite includes it in the production build.
     this.load.image('lunchRoom',
-      new URL('../../assets/backgrounds/Frokost Stue.png', import.meta.url).href);
-    this.load.image('apple', new URL('../../assets/Food/Apple.png', import.meta.url).href);
-    this.load.image('banana', new URL('../../assets/Food/Banana.png', import.meta.url).href);
-    this.load.image('pear', new URL('../../assets/Food/Pear.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/backgrounds/Frokost Stue.png');
+    this.load.image('apple', import.meta.env.BASE_URL + 'assets/Food/Apple.png');
+    this.load.image('banana', import.meta.env.BASE_URL + 'assets/Food/Banana.png');
+    this.load.image('pear', import.meta.env.BASE_URL + 'assets/Food/Pear.png');
     this.load.spritesheet('mysteriousColleague',
-      new URL('../../assets/mobs/Extras/MystCol.png', import.meta.url).href,
+      import.meta.env.BASE_URL + 'assets/mobs/Extras/MystCol.png',
       { frameWidth: 64, frameHeight: 64 });
   }
 

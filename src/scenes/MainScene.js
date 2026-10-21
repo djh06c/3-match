@@ -24,9 +24,9 @@ export default class MainScene extends Phaser.Scene {
 
   preload() {
     this.load.image('inkStain',
-      new URL('../../assets/mobs/Printosaurus/Inkstain.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/Inkstain.png');
     this.load.image('aiChip',
-      new URL('../../assets/icons/Chip - AI.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/icons/Chip - AI.png');
     // =====================================
     // IKONER TIL MATCH-3
     // =====================================

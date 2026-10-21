@@ -90,10 +90,10 @@ const enemies = {
       hit: 'MimicIdle', death: 'MimicDeath', spawn: 'MimicOpening'
     },
     assets: [
-      { key: 'MimicIdle', path: new URL('../../assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicOpening', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicAttack', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicDeath', path: new URL('../../assets/mobs/CardboardMimic/MimicDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'MimicIdle', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicOpening', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicAttack', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicDeath', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/MimicDeath.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'mimic-idle', start: 0, end: 0, frameRate: 1, repeat: -1 },
@@ -142,10 +142,10 @@ const enemies = {
       hit: 'DeadlineDemonHit', death: 'DeadlineDemonDeath'
     },
     assets: [
-      { key: 'DeadlineDemonIdle', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonAttack', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonAttack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonHit', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonDeath', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'DeadlineDemonIdle', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonIdle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonAttack', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonAttack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonHit', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonTakeDMG.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonDeath', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonDeath.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'deadline-demon-idle', start: 0, end: 3, frameRate: 4, repeat: -1 },
@@ -219,6 +219,7 @@ const enemies = {
   printosaurus: {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',
+    y: 135,
     maxHP: 90,
     baseDamage: 5,
     damageIncrease: 0,
@@ -243,11 +244,11 @@ const enemies = {
       spawn: 'PrinterSpawn'
     },
     assets: [
-      { key: 'PrinterSpawn', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusSpawn.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterIdle', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterAttack', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDealDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterDeath', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterTakeDMG', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64},
+      { key: 'PrinterSpawn', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusSpawn.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterIdle', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusIdle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterAttack', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusDealDMG.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterDeath', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusDeath.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterTakeDMG', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusTakeDMG.png', frameWidth: 64, frameHeight: 64},
     ], 
     animations: {
       idle: { key: 'printer-idle', start: 0, end: 1, frameRate: 2, repeat: -1 },
