@@ -9,7 +9,7 @@ const enemies = {
   joblin: {
     id: 'joblin',
     name: 'JOBLIN',
-    maxHP: 100,
+    maxHP: 80,
     baseDamage: 4,
     damageIncrease: 1,
     abilities: [
@@ -124,14 +124,14 @@ const enemies = {
     abilities: [
       {
         id: 'risingExpectations',
-        type: 'growingMatchRequirement',
-        startingRequirement: 3,
-        movesPerIncrease: 3,
-        description: 'Deadline Demon deals 5 damage. Moves 1-2 require a 3-match, moves 3-5 require a 4-match, moves 6-8 require a 5-match, and so on. Your largest initial match counts, plus 1 per cascade wave, regardless of its tile count. Missing the target permanently adds 1 damage to his attacks. Only valid normal moves advance the requirement.'
+        type: 'growingDamageRequirement',
+        startingRequirement: 8,
+        damagePerRound: 1,
+        description: 'Deal at least 8 damage on your first round. The required damage increases by 1 each round: 8, 9, 10, and so on. Each time you deal less than required, his attack damage permanently increases by 1. Cascades, AI bonus damage and free AI moves count toward your round\'s damage.'
       }
     ],
     introReadTime: 3500,
-    maxHP: 100,
+    maxHP: 85,
     baseDamage: 5,
     damageIncrease: 0,
     scale: 3,
@@ -200,7 +200,7 @@ const enemies = {
       idle: { key: 'necromanager-idle', start: 0, end: 6, frameRate: 8, repeat: -1 },
       attack: { key: 'necromanager-throw', start: 0, end: 9, frameRate: 10, repeat: 0 },
       summon: { key: 'necromanager-summon', start: 0, end: 12, frameRate: 10, repeat: 0 },
-      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0 }
+      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0, holdFrame: 11, extraFrames: 4 }
     },
     dialogue: {
       enemyAction: [
@@ -219,7 +219,7 @@ const enemies = {
   printosaurus: {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',
-    maxHP: 100,
+    maxHP: 90,
     baseDamage: 5,
     damageIncrease: 0,
     abilities: [

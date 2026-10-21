@@ -37,12 +37,11 @@ export default class LunchScene extends Phaser.Scene {
     const background = this.add.image(width / 2, height / 2, 'lunchRoom');
     background.setScale(width / background.width);
 
-    this.add.text(width / 2, 70, 'LUNCH BREAK', {
-      fontSize: '30px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold'
-    }).setOrigin(0.5);
+    this.add.rectangle(width / 2, 90, 220, 16, 0x333333).setStrokeStyle(2, 0xffffff);
+    const moraleBar = this.add.rectangle(width / 2 - 110, 90, 220, 16, 0x55cc77)
+      .setOrigin(0, 0.5);
+    moraleBar.displayWidth = 220 * Phaser.Math.Clamp(
+      this.progression.playerMorale / this.progression.playerMaxMorale, 0, 1);
 
     const moraleText = this.add.text(width / 2, 120,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
@@ -78,6 +77,15 @@ export default class LunchScene extends Phaser.Scene {
         this.progression.playerMorale = Math.min(this.progression.playerMaxMorale,
           this.progression.playerMorale + 2);
         moraleText.setText(`MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`);
+        moraleBar.displayWidth = 220 * Phaser.Math.Clamp(
+          this.progression.playerMorale / this.progression.playerMaxMorale, 0, 1);
+        const feedback = this.add.text(width / 2 + 130, 90, '+2', {
+          fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffff00'
+        }).setOrigin(0, 0.5).setDepth(10);
+        this.tweens.add({
+          targets: feedback, y: 65, alpha: 0, duration: 800,
+          onComplete: () => feedback.destroy()
+        });
         fruit.destroy();
       });
     }
@@ -93,7 +101,7 @@ export default class LunchScene extends Phaser.Scene {
         repeat: -1
       });
     }
-    this.add.sprite(170, height / 2, 'mysteriousColleague')
+    this.add.sprite(170, height / 2 + 50, 'mysteriousColleague')
       .setScale(2).play('mysterious-colleague-idle');
 
     const dialogue = this.add.text(width / 2, height - 205, '', {

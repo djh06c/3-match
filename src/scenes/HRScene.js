@@ -32,6 +32,25 @@ export default class HRScene extends Phaser.Scene {
     const room = this.add.sprite(this.scale.width / 2, this.scale.height / 2, 'hrOfficeStart');
     room.setScale(Math.min(this.scale.width / 120, this.scale.height / 100));
 
+    // =====================================
+    // OVERBLIK OVER MORALE OG MISTANKE
+    // =====================================
+    this.add.rectangle(12, 12, 210, 108, 0x222222, 0.95).setOrigin(0).setDepth(10);
+    this.moraleText = this.add.text(24, 22, '', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+    }).setDepth(11);
+    this.add.rectangle(24, 47, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+    this.moraleBar = this.add.rectangle(24, 47, 180, 12, 0x55cc77)
+      .setOrigin(0, 0.5).setDepth(11);
+
+    this.suspicionText = this.add.text(24, 68, '', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+    }).setDepth(11);
+    this.add.rectangle(24, 97, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+    this.suspicionBar = this.add.rectangle(24, 97, 180, 12, 0xffaa33)
+      .setOrigin(0, 0.5).setDepth(11);
+    this.updateOverview();
+
     if (!this.anims.exists('hr-office-intro')) {
       this.anims.create({
         key: 'hr-office-intro',
@@ -50,6 +69,19 @@ export default class HRScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       room.play('hr-office-intro');
     });
+  }
+
+  // =====================================
+  // OPDATERING AF MÅLERNE
+  // =====================================
+  updateOverview() {
+    const morale = this.progression.playerMorale;
+    const maxMorale = this.progression.playerMaxMorale;
+    const suspicion = this.registry.get('aiBoosters')?.suspicion ?? 0;
+    this.moraleText.setText(`MORALE: ${morale} / ${maxMorale}`);
+    this.moraleBar.displayWidth = 180 * Phaser.Math.Clamp(morale / maxMorale, 0, 1);
+    this.suspicionText.setText(`SUSPICION: ${suspicion} / 100`);
+    this.suspicionBar.displayWidth = 180 * Phaser.Math.Clamp(suspicion / 100, 0, 1);
   }
 
   // =====================================
@@ -73,7 +105,7 @@ export default class HRScene extends Phaser.Scene {
         moraleBoost: 40
       },
       {
-        text: 'Go to lunch instead',
+        text: 'Go to lunch instead (choose another power)',
         reply: 'Of course. Nothing resolves workplace concerns like a sandwich.',
         leave: true,
         goToLunch: true
@@ -175,6 +207,7 @@ export default class HRScene extends Phaser.Scene {
             const healedMorale = Math.min(choice.moraleBoost,
               this.progression.playerMaxMorale - this.progression.playerMorale);
             this.progression.playerMorale += healedMorale;
+            this.updateOverview();
             dialogue.setText(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
 
             const continueButton = this.add.rectangle(width / 2, height - 115,

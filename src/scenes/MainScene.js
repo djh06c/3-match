@@ -156,11 +156,13 @@ export default class MainScene extends Phaser.Scene {
     this.lastMoveTotalMatched = 0;
     this.freeMoveTilesMatched = 0;
     this.deadlineAbility = (this.enemyConfig.abilities ?? []).find(ability =>
-      ability.type === 'growingMatchRequirement'
+      ability.type === 'growingDamageRequirement'
     );
     this.deadlineMoveCount = 0;
     this.deadlineDamageBonus = 0;
+    this.deadlineRoundDamage = 0;
     this.deadlineRequirement = this.deadlineAbility?.startingRequirement ?? 0;
+    this.announcedDeadlineRequirement = this.deadlineRequirement;
     const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
     this.nextInkAttack = inkAbility
       ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
@@ -361,12 +363,17 @@ export default class MainScene extends Phaser.Scene {
       const animation = this.enemyConfig.animations[action];
 
       if (!this.anims.exists(animation.key)) {
+        const frames = this.anims.generateFrameNumbers(this.enemyConfig.textures[action], {
+          start: animation.start,
+          end: animation.end
+        });
+        if (animation.holdFrame !== undefined) {
+          // Varigheden lægges oven i billedets normale visningstid.
+          frames[animation.holdFrame - animation.start].duration = animation.extraFrames * 1000 / animation.frameRate;
+        }
         this.anims.create({
           key: animation.key,
-          frames: this.anims.generateFrameNumbers(this.enemyConfig.textures[action], {
-            start: animation.start,
-            end: animation.end
-          }),
+          frames,
           frameRate: animation.frameRate,
           repeat: animation.repeat
         });
@@ -796,6 +803,10 @@ export default class MainScene extends Phaser.Scene {
       await this.board.playInitialDrop(readyState);
     }
     this.showEnemyDialogue('intro');
+    if (this.aiPowerHint) {
+      this.aiPowerHint.setVisible(true);
+      this.aiButton.setStrokeStyle(3, 0xffff00);
+    }
     if (this.enemyConfig.introReadTime) {
       this.time.delayedCall(this.enemyConfig.introReadTime, () => {
         if (!this.battleWon && !this.battleLost) {
@@ -828,6 +839,13 @@ export default class MainScene extends Phaser.Scene {
     const button = this.add.rectangle(75, 620, 100, 60, 0x333333)
       .setStrokeStyle(2, 0xffffff).setDepth(20);
     this.aiButton = button;
+    this.aiPowerHint = null;
+    if (this.encounterId === 'printosaurus' && this.aiBoosters.unlocked) {
+      this.aiPowerHint = this.add.text(75, 565, 'click here to use your powers', {
+        fontSize: '14px', color: '#ffff00', fontFamily: 'Arial',
+        align: 'center', wordWrap: { width: 140 }
+      }).setOrigin(0.5).setDepth(22).setVisible(false);
+    }
     this.add.image(75, 611, 'aiChip').setDisplaySize(28, 28).setDepth(21);
     this.aiButtonText = this.add.text(75, 638, this.aiBoosters.unlocked ? 'AI' : 'AI LOCKED', {
       fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
@@ -852,6 +870,16 @@ export default class MainScene extends Phaser.Scene {
     if (this.aiBoosters.suspicion >= 100) {
       this.startSupervisorIntervention();
     }
+  }
+
+  // =====================================
+  // FJERNELSE AF INTRODUKTION TIL AI-KNAPPEN
+  // =====================================
+  hideAIPowerHint() {
+    if (!this.aiPowerHint) return;
+    this.aiPowerHint.destroy();
+    this.aiPowerHint = null;
+    this.aiButton.setStrokeStyle(2, 0xffffff);
   }
 
   // =====================================
@@ -1016,6 +1044,7 @@ export default class MainScene extends Phaser.Scene {
     if (this.supervisorActive || this.battleWon || this.battleLost) return;
 
     this.supervisorActive = true;
+    this.hideAIPowerHint();
     this.EnemyMaxHP += 50;
     this.EnemyHP = this.EnemyMaxHP;
     this.updateEnemyHealthBar();
@@ -1142,12 +1171,11 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    this.updateDeadlineRequirement(result, freeMove);
-
     if (freeMove) {
       this.freeMoveTilesMatched += result.totalMatched;
     } else {
       // Free AI matches contribute to the same response as the following normal move.
+      this.hideAIPowerHint();
       this.lastMoveTotalMatched = this.freeMoveTilesMatched + result.totalMatched;
       this.freeMoveTilesMatched = 0;
       this.board.clearInk();
@@ -1167,6 +1195,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.turnDamage =
       damageResult.totalDamage;
+    this.updateDeadlineRequirement(this.turnDamage, freeMove);
     if (this.copyRoundAbility) {
       this.playerRoundActions.push({ type: 'damage', amount: this.turnDamage });
     }
@@ -1272,21 +1301,20 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // =====================================
-  // DEADLINE DEMONS STIGENDE MATCHKRAV
+  // DEADLINE DEMONS STIGENDE SKADEKRAV
   // =====================================
-  updateDeadlineRequirement(result, freeMove) {
-    if (!this.deadlineAbility || freeMove) return;
+  updateDeadlineRequirement(damage, freeMove) {
+    if (!this.deadlineAbility) return;
+    this.deadlineRoundDamage += damage;
+    if (freeMove) return;
 
-    const initialMatches = this.mergeConnectedMatches(result.matches[0].matches);
-    const initialSize = Math.max(...initialMatches.map(match => match.cells.length));
-    // Hver kaskadebølge giver ét point, uanset antallet af brikker i bølgen.
-    const matchScore = initialSize + Math.max(0, result.chains - 1);
-    if (matchScore < this.deadlineRequirement) {
+    if (this.deadlineRoundDamage < this.deadlineRequirement) {
       this.deadlineDamageBonus++;
     }
+    this.deadlineRoundDamage = 0;
     this.deadlineMoveCount++;
     this.deadlineRequirement = this.deadlineAbility.startingRequirement
-      + Math.floor((this.deadlineMoveCount + 1) / this.deadlineAbility.movesPerIncrease);
+      + this.deadlineMoveCount * this.deadlineAbility.damagePerRound;
   }
 
   // =====================================
@@ -1772,8 +1800,10 @@ export default class MainScene extends Phaser.Scene {
 
     const index = Math.floor(Math.random() * lines.length);
     let message = lines[index];
-    if (this.deadlineAbility && (event === 'intro' || event === 'enemyAction')) {
-      message += `\nThe scope is now ${this.deadlineRequirement}.`;
+    if (this.deadlineAbility && event === 'enemyAction'
+      && this.deadlineRequirement > this.announcedDeadlineRequirement) {
+      message += `\nThe scope has grown to ${this.deadlineRequirement} damage.`;
+      this.announcedDeadlineRequirement = this.deadlineRequirement;
     }
     this.showEnemySpeechBubble(message);
     this.enemyDialogueTimer = this.time.delayedCall(5000, () => {
@@ -2586,6 +2616,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.battleWon = true;
+    this.hideAIPowerHint();
     this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
@@ -2635,6 +2666,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.battleLost = true;
+    this.hideAIPowerHint();
     this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
