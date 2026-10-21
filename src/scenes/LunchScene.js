@@ -19,6 +19,9 @@ export default class LunchScene extends Phaser.Scene {
     this.load.image('apple', new URL('../../assets/Food/Apple.png', import.meta.url).href);
     this.load.image('banana', new URL('../../assets/Food/Banana.png', import.meta.url).href);
     this.load.image('pear', new URL('../../assets/Food/Pear.png', import.meta.url).href);
+    this.load.spritesheet('mysteriousColleague',
+      new URL('../../assets/mobs/Extras/MystCol.png', import.meta.url).href,
+      { frameWidth: 64, frameHeight: 64 });
   }
 
   // =====================================
@@ -27,6 +30,9 @@ export default class LunchScene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
+    const secondVisit = this.progression.completedEncounterId === 'cardboardMimic';
+    const boosters = this.registry.get('aiBoosters') ?? { suspicion: 0 };
+    const unlockedPowers = boosters.unlockedPowers ?? (boosters.selectedPower ? [boosters.selectedPower] : []);
 
     const background = this.add.image(width / 2, height / 2, 'lunchRoom');
     background.setScale(width / background.width);
@@ -79,12 +85,18 @@ export default class LunchScene extends Phaser.Scene {
     // =====================================
     // DEN MYSTISKE KOLLEGA
     // =====================================
-    // Silhuetten bruges, indtil kollegaen har sin egen grafik.
-    this.add.circle(170, height / 2 - 15, 18, 0x111111);
-    this.add.rectangle(170, height / 2 + 25, 38, 55, 0x111111);
+    if (!this.anims.exists('mysterious-colleague-idle')) {
+      this.anims.create({
+        key: 'mysterious-colleague-idle',
+        frames: this.anims.generateFrameNumbers('mysteriousColleague', { start: 0, end: 1 }),
+        frameRate: 2,
+        repeat: -1
+      });
+    }
+    this.add.sprite(170, height / 2, 'mysteriousColleague')
+      .setScale(2).play('mysterious-colleague-idle');
 
-    const dialogue = this.add.text(width / 2, height - 205,
-      'MYSTERIOUS COLLEAGUE\nHey there, new guy. Heard of the new AI made by Beta?\nIt’s called ClawedIMP.\nJust keep it quiet. The Supervisor notices.', {
+    const dialogue = this.add.text(width / 2, height - 205, '', {
       fontSize: '16px',
       color: '#ffffff',
       backgroundColor: '#222222',
@@ -93,6 +105,25 @@ export default class LunchScene extends Phaser.Scene {
       padding: { x: 12, y: 10 },
       wordWrap: { width: 620 }
     }).setOrigin(0.5);
+
+    // Stop den forrige skriveeffekt, hvis spilleren vælger et svar undervejs.
+    let dialogueTimer = null;
+    const typeDialogue = message => {
+      dialogueTimer?.remove();
+      dialogue.setText('MYSTERIOUS COLLEAGUE\n');
+      let characterCount = 0;
+      dialogueTimer = this.time.addEvent({
+        delay: 25,
+        repeat: message.length - 1,
+        callback: () => {
+          characterCount++;
+          dialogue.setText(`MYSTERIOUS COLLEAGUE\n${message.slice(0, characterCount)}`);
+        }
+      });
+    };
+    typeDialogue(secondVisit
+      ? 'Hey there, fellow "workhorse". Have you had time to use ClawedIMP?\nTry the other power. You can keep both.'
+      : 'Hey there, new guy. Heard of the new AI made by Beta?\nIt’s called ClawedIMP.\nJust keep it quiet. The Supervisor notices.');
 
     // =====================================
     // VALG AF AI-EVNE
@@ -116,23 +147,22 @@ export default class LunchScene extends Phaser.Scene {
         }).setOrigin(0.5);
       choiceButtons.push(choiceButton);
       choiceLabels.push(choiceLabel);
+      if (unlockedPowers.includes(power.id) || this.progression.lunchChoiceMade) {
+        choiceButton.disableInteractive().setFillStyle(0x333333);
+        if (unlockedPowers.includes(power.id)) choiceLabel.setText(`${power.title} UNLOCKED`);
+      }
 
       choiceButton.on('pointerdown', () => {
-        const boosters = this.registry.get('aiBoosters') ?? { suspicion: 0 };
+        if (this.progression.lunchChoiceMade || unlockedPowers.includes(power.id)) return;
+        this.progression.lunchChoiceMade = true;
         boosters.unlocked = true;
         boosters.selectedPower = power.id;
+        boosters.unlockedPowers = [...unlockedPowers, power.id];
         this.registry.set('aiBoosters', boosters);
         choiceButtons.forEach(button => button.disableInteractive());
         choiceLabels[index].setText(`${power.title} SELECTED`);
-        dialogue.setText(`Your AI power is ready. ${power.uses} use(s) per fight.\nYou keep your turn, but the Supervisor notices.`);
+        typeDialogue(`Your AI power is ready. ${power.uses} use(s) per fight.\nYou keep your turn, but the Supervisor notices.`);
       });
-    }
-
-    const selectedPower = this.registry.get('aiBoosters')?.selectedPower;
-    if (selectedPower) {
-      choiceButtons.forEach(button => button.disableInteractive());
-      const index = powers.findIndex(power => power.id === selectedPower);
-      if (index >= 0) choiceLabels[index].setText(`${powers[index].title} SELECTED`);
     }
 
     // =====================================
@@ -152,13 +182,13 @@ export default class LunchScene extends Phaser.Scene {
     button.on('pointerover', () => button.setFillStyle(0x777777));
     button.on('pointerout', () => button.setFillStyle(0x555555));
     button.on('pointerdown', () => {
-      if (!this.registry.get('aiBoosters')?.selectedPower) {
-        dialogue.setText('Choose an AI power before returning to work.');
+      if (!this.progression.lunchChoiceMade) {
+        typeDialogue('Choose an AI power before returning to work.');
         return;
       }
       button.disableInteractive();
       this.scene.start('MainScene', {
-        encounterId: 'printosaurus',
+        encounterId: secondVisit ? 'deadlineDemon' : 'printosaurus',
         encounterIndex: this.progression.nextEncounterIndex,
         playerMorale: this.progression.playerMorale,
         playerMaxMorale: this.progression.playerMaxMorale

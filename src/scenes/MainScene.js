@@ -155,6 +155,12 @@ export default class MainScene extends Phaser.Scene {
     this.enemyAttackCount = 0;
     this.lastMoveTotalMatched = 0;
     this.freeMoveTilesMatched = 0;
+    this.deadlineAbility = (this.enemyConfig.abilities ?? []).find(ability =>
+      ability.type === 'growingMatchRequirement'
+    );
+    this.deadlineMoveCount = 0;
+    this.deadlineDamageBonus = 0;
+    this.deadlineRequirement = this.deadlineAbility?.startingRequirement ?? 0;
     const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
     this.nextInkAttack = inkAbility
       ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
@@ -162,7 +168,9 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTurnActive = false;
 
     this.usedEnemyAbilities = [];
-    this.enemyAttackDamages = [];
+    this.enemyActions = [];
+    this.playerRoundActions = [];
+    this.copyRoundAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'copyRound');
     this.enemyTurnDamage = 0;
     this.enemyAbility = null;
     this.fixedEnemyDamage = null;
@@ -741,14 +749,35 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(5);
 
     this.createAIControls();
+    if (import.meta.env.DEV) this.createDevSkipButton();
     this.updatePlayerHealthBar();
     this.startEncounter();
+  }
+
+  // =====================================
+  // MIDLERTIDIG KNAP TIL AT SPRINGE KAMPE OVER
+  // =====================================
+  createDevSkipButton() {
+    const button = this.add.text(this.scale.width - 12, 12, 'DEV: SKIP FIGHT', {
+      fontFamily: 'Arial', fontSize: '14px', color: '#ffff88',
+      backgroundColor: '#222222', padding: { x: 10, y: 8 }
+    }).setOrigin(1, 0).setDepth(60).setInteractive({ useHandCursor: true });
+
+    button.on('pointerdown', () => {
+      // Vent på spillerens tur, så igangværende animationer ikke afbrydes.
+      if (this.board.state !== 'IDLE' || this.battleWon || this.battleLost || this.enemyTurnActive) return;
+      button.disableInteractive().setVisible(false);
+      this.EnemyHP = 0;
+      this.updateEnemyHealthBar();
+      this.winBattle();
+    });
   }
 
   // =====================================
   // KAMPSTART OG FJENDENS INTRODUKTION
   // =====================================
   async startEncounter() {
+    const readyState = this.enemyConfig.introReadTime ? 'ENCOUNTER_INTRO' : 'IDLE';
     const spawn = this.enemyConfig.animations.spawn;
     if (spawn) {
       const spawnFinished = new Promise(resolve => {
@@ -762,11 +791,18 @@ export default class MainScene extends Phaser.Scene {
       // Tile drop must not unlock input while the enemy is still spawning.
       await Promise.all([spawnFinished, this.board.playInitialDrop('ENCOUNTER_INTRO')]);
       if (this.battleWon || this.battleLost || !this.scene.isActive()) return;
-      this.board.setState('IDLE');
+      this.board.setState(readyState);
     } else {
-      await this.board.playInitialDrop();
+      await this.board.playInitialDrop(readyState);
     }
     this.showEnemyDialogue('intro');
+    if (this.enemyConfig.introReadTime) {
+      this.time.delayedCall(this.enemyConfig.introReadTime, () => {
+        if (!this.battleWon && !this.battleLost) {
+          this.board.setState('IDLE');
+        }
+      });
+    }
   }
 
   // =====================================
@@ -776,12 +812,15 @@ export default class MainScene extends Phaser.Scene {
     this.aiBoosters = this.registry.get('aiBoosters') ?? {
       unlocked: false, selectedPower: null, suspicion: 0
     };
+    this.aiBoosters.unlockedPowers = this.aiBoosters.unlockedPowers
+      ?? (this.aiBoosters.selectedPower ? [this.aiBoosters.selectedPower] : []);
     // Keep a separate copy so AI use and result recovery cannot change the retry point.
     this.startingAIBoosters = { ...this.aiBoosters };
     this.registry.set('aiBoosters', this.aiBoosters);
     this.aiMenu = null;
     this.aiHint = null;
     this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 2;
+    this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3 };
     this.freeAIMove = false;
     this.supervisorActive = false;
     this.suspicionRecovered = false;
@@ -827,39 +866,42 @@ export default class MainScene extends Phaser.Scene {
     this.board.setState('AI_MENU');
     this.aiMenu = this.add.container(0, 0).setDepth(60);
     const shade = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.65).setInteractive();
-    const panel = this.add.rectangle(400, 350, 460, 230, 0x222222).setStrokeStyle(2, 0xffffff);
-    const title = this.add.text(400, 275, 'AI BOOSTERS', {
+    const panel = this.add.rectangle(400, 350, 600, 340, 0x222222).setStrokeStyle(2, 0xffffff);
+    const title = this.add.text(400, 215, 'AI BOOSTERS', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5);
-    const useButton = this.add.rectangle(400, 350, 400, 85, 0x555555)
-      .setInteractive({ useHandCursor: true });
-    if (this.aiPowerUsesRemaining <= 0 || !this.aiBoosters.selectedPower) {
-      useButton.disableInteractive();
-      useButton.setFillStyle(0x333333);
+    this.aiMenu.add([shade, panel, title]);
+    for (let index = 0; index < this.aiBoosters.unlockedPowers.length; index++) {
+      const power = this.aiBoosters.unlockedPowers[index];
+      const y = 295 + index * 105;
+      const healing = power === 'moraleBoost';
+      const powerName = healing ? 'MORALE BOOST' : 'BEST MOVE';
+      const effect = healing
+        ? 'Recover 10 Morale. Keep your turn.'
+        : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
+      const suspicionCost = healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
+      const useButton = this.add.rectangle(400, y, 560, 95, 0x555555)
+        .setInteractive({ useHandCursor: true });
+      if (this.aiUsesRemaining[power] <= 0) {
+        useButton.disableInteractive().setFillStyle(0x333333);
+      }
+      const label = this.add.text(400, y,
+        `${powerName} - ${this.aiUsesRemaining[power]} uses left this fight\n${effect}\n+${suspicionCost} Suspicion per use.`, {
+          fontSize: '15px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+        }).setOrigin(0.5);
+      this.aiMenu.add([useButton, label]);
+      useButton.on('pointerdown', () => {
+        this.aiBoosters.selectedPower = power;
+        this.aiPowerUsesRemaining = this.aiUsesRemaining[power];
+        if (healing) this.useMoraleBoost();
+        else this.useBestMove();
+      });
     }
-    const powerName = this.aiBoosters.selectedPower === 'moraleBoost' ? 'MORALE BOOST' : 'BEST MOVE';
-    const effect = this.aiBoosters.selectedPower === 'moraleBoost'
-      ? 'Recover 10 Morale. Keep your turn.'
-      : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
-    const suspicionCost = this.aiBoosters.selectedPower === 'moraleBoost'
-      ? Math.min(10, this.PlayerMaxHP - this.PlayerHP)
-      : 15;
-    const label = this.add.text(400, 350,
-      `${powerName} - ${this.aiPowerUsesRemaining} uses left this fight\n${effect}\n+${suspicionCost} Suspicion per use.`, {
-        fontSize: '16px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
-      }).setOrigin(0.5);
-    const close = this.add.text(400, 425, 'CLOSE', {
+    const close = this.add.text(400, 485, 'CLOSE', {
       fontSize: '18px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.aiMenu.add([shade, panel, title, useButton, label, close]);
+    this.aiMenu.add(close);
     close.on('pointerdown', () => this.closeAIMenu());
-    useButton.on('pointerdown', () => {
-      if (this.aiBoosters.selectedPower === 'moraleBoost') {
-        this.useMoraleBoost();
-      } else {
-        this.useBestMove();
-      }
-    });
   }
 
   closeAIMenu() {
@@ -944,6 +986,9 @@ export default class MainScene extends Phaser.Scene {
     const healedMorale = Math.min(10, this.PlayerMaxHP - this.PlayerHP);
     this.PlayerHP += healedMorale;
     this.updatePlayerHealthBar();
+    if (this.copyRoundAbility) {
+      this.playerRoundActions.push({ type: 'heal', amount: healedMorale });
+    }
     this.finishAIPowerUse(healedMorale);
     this.statusText.setText('Recovered up to 10 Morale. Your turn continues!');
   }
@@ -953,6 +998,7 @@ export default class MainScene extends Phaser.Scene {
   // =====================================
   finishAIPowerUse(suspicionCost) {
     this.aiPowerUsesRemaining--;
+    this.aiUsesRemaining[this.aiBoosters.selectedPower] = this.aiPowerUsesRemaining;
     this.aiBoosters.suspicion = Math.min(100, this.aiBoosters.suspicion + suspicionCost);
     this.registry.set('aiBoosters', this.aiBoosters);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
@@ -1096,6 +1142,8 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
+    this.updateDeadlineRequirement(result, freeMove);
+
     if (freeMove) {
       this.freeMoveTilesMatched += result.totalMatched;
     } else {
@@ -1119,6 +1167,9 @@ export default class MainScene extends Phaser.Scene {
 
     this.turnDamage =
       damageResult.totalDamage;
+    if (this.copyRoundAbility) {
+      this.playerRoundActions.push({ type: 'damage', amount: this.turnDamage });
+    }
 
     this.damageBreakdown =
       damageResult.breakdown;
@@ -1218,6 +1269,24 @@ export default class MainScene extends Phaser.Scene {
     this.statusText.setText(
       `${this.turnDamage} damage`
     );
+  }
+
+  // =====================================
+  // DEADLINE DEMONS STIGENDE MATCHKRAV
+  // =====================================
+  updateDeadlineRequirement(result, freeMove) {
+    if (!this.deadlineAbility || freeMove) return;
+
+    const initialMatches = this.mergeConnectedMatches(result.matches[0].matches);
+    const initialSize = Math.max(...initialMatches.map(match => match.cells.length));
+    // Hver kaskadebølge giver ét point, uanset antallet af brikker i bølgen.
+    const matchScore = initialSize + Math.max(0, result.chains - 1);
+    if (matchScore < this.deadlineRequirement) {
+      this.deadlineDamageBonus++;
+    }
+    this.deadlineMoveCount++;
+    this.deadlineRequirement = this.deadlineAbility.startingRequirement
+      + Math.floor((this.deadlineMoveCount + 1) / this.deadlineAbility.movesPerIncrease);
   }
 
   // =====================================
@@ -1326,14 +1395,14 @@ export default class MainScene extends Phaser.Scene {
       lines.push(`AI bonus = ${aiBonus} DMG`);
     }
 
-    this.damageHistory.push(...lines);
+    this.damageHistory.unshift(...lines);
     this.damageCalculationText.setText(this.damageHistory.join('\n'));
 
     // Fjern de ældste linjer, når historikken når ned til totalfeltet.
     const availableHeight = this.damageTotalText.y - this.damageTotalText.height / 2
       - this.damageCalculationText.y - 10;
     while (this.damageHistory.length > 1 && this.damageCalculationText.height > availableHeight) {
-      this.damageHistory.shift();
+      this.damageHistory.pop();
       this.damageCalculationText.setText(this.damageHistory.join('\n'));
     }
 
@@ -1458,7 +1527,7 @@ export default class MainScene extends Phaser.Scene {
      * justere placeringen.
      */
     const bubbleX =
-      this.player.x + 80;
+      this.player.x + 45;
 
     const bubbleY =
       this.playerBaseY - 10;
@@ -1652,25 +1721,32 @@ export default class MainScene extends Phaser.Scene {
 
     const abilities = this.enemyConfig.abilities ?? [];
     this.enemyAbility = abilities.find(ability =>
-      ability.type === 'doubleAttack' &&
+      (ability.type === 'copyRound' && (this.enemyAttackCount + 1) % ability.everyTurns === 0) ||
+      (ability.type === 'doubleAttack' &&
       !this.usedEnemyAbilities.includes(ability.id) &&
-      this.EnemyHP < this.EnemyMaxHP * ability.hpThreshold
+      this.EnemyHP < this.EnemyMaxHP * ability.hpThreshold)
     );
 
     const normalDamage = this.getEnemyAttackDamage();
-    this.enemyAttackDamages = [normalDamage];
+    this.enemyActions = this.enemyAbility?.type === 'copyRound'
+      ? [...this.playerRoundActions]
+      : [{ type: 'damage', amount: normalDamage }];
+    this.playerRoundActions = [];
     this.enemyTurnDamage = 0;
 
-    if (this.enemyAbility) {
+    if (this.enemyAbility?.type === 'doubleAttack') {
       // Reaching the threshold sooner locks in lower damage for the rest of the fight.
       if (this.enemyAbility.stopDamageScaling) {
         this.fixedEnemyDamage = normalDamage;
       }
       this.usedEnemyAbilities.push(this.enemyAbility.id);
-      this.enemyAttackDamages.push(normalDamage);
+      this.enemyActions.push({ type: 'damage', amount: normalDamage });
       this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
       this.statusText.setText(`${this.enemyConfig.name}: DOUBLE ATTACK!`);
-    } else if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3) {
+    } else if (this.enemyAbility?.type === 'copyRound') {
+      this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
+    } else if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3
+      && this.enemyConfig.dialogue?.enemyLowHP?.length) {
       this.enemyLowHPShown = true;
       this.showEnemyDialogue('enemyLowHP');
     } else {
@@ -1695,7 +1771,11 @@ export default class MainScene extends Phaser.Scene {
     }
 
     const index = Math.floor(Math.random() * lines.length);
-    this.showEnemySpeechBubble(lines[index]);
+    let message = lines[index];
+    if (this.deadlineAbility && (event === 'intro' || event === 'enemyAction')) {
+      message += `\nThe scope is now ${this.deadlineRequirement}.`;
+    }
+    this.showEnemySpeechBubble(message);
     this.enemyDialogueTimer = this.time.delayedCall(5000, () => {
       this.hideEnemySpeechBubble();
     });
@@ -1886,20 +1966,46 @@ export default class MainScene extends Phaser.Scene {
     this.enemy.y =
       this.enemyBaseY;
 
+    const nextAction = this.enemyActions[0];
+    if (nextAction?.type === 'heal') {
+      this.enemy.play(this.enemyConfig.animations.idle.key);
+      this.time.delayedCall(1200, () => this.finishEnemyAttack());
+      return;
+    }
+
+    const attackAction = this.enemyAbility?.type === 'copyRound' ? 'summon' : 'attack';
+    const attackAnimation = this.enemyConfig.animations[attackAction];
+    let animationsRemaining = 1;
+    const finishAnimation = () => {
+      animationsRemaining--;
+      if (animationsRemaining === 0) this.finishEnemyAttack();
+    };
+    if (attackAction === 'summon') {
+      animationsRemaining++;
+      // Effekten er kun grafik og fjernes, når dens animation er færdig.
+      const summoned = this.add.sprite(this.enemyBaseX + this.enemyAbility.offsetX,
+        this.enemyBaseY, this.enemyConfig.textures.summoned)
+        .setScale(this.enemyConfig.scale).setDepth(5);
+      const summonedAnimation = this.enemyConfig.animations.summoned;
+      summoned.once(`animationcomplete-${summonedAnimation.key}`, () => {
+        summoned.destroy();
+        finishAnimation();
+      });
+      summoned.play(summonedAnimation.key);
+    }
+
     this.enemy.setTexture(
-      this.enemyConfig.textures.attack,
+      this.enemyConfig.textures[attackAction],
       0
     );
 
     this.enemy.once(
-      `animationcomplete-${this.enemyConfig.animations.attack.key}`,
-      () => {
-        this.finishEnemyAttack();
-      }
+      `animationcomplete-${attackAnimation.key}`,
+      finishAnimation
     );
 
     this.enemy.play(
-      this.enemyConfig.animations.attack.key
+      attackAnimation.key
     );
   }
 
@@ -1915,15 +2021,20 @@ export default class MainScene extends Phaser.Scene {
       return;
     }
 
-    const damage = this.enemyAttackDamages.shift();
-    if (damage === undefined) {
+    const action = this.enemyActions.shift();
+    if (!action) {
       return;
     }
+    const damage = action.type === 'damage' ? action.amount : 0;
 
     this.enemyTurnDamage += damage;
 
     const healedMorale = damage < 0 ? Math.min(-damage, this.PlayerMaxHP - this.PlayerHP) : 0;
-    if (damage < 0) {
+    if (action.type === 'heal') {
+      this.EnemyHP = Math.min(this.EnemyMaxHP, this.EnemyHP + action.amount);
+      this.updateEnemyHealthBar();
+      this.statusText.setText(`${this.enemyConfig.name} copies your healing!`);
+    } else if (damage < 0) {
       this.PlayerHP += healedMorale;
       this.updatePlayerHealthBar();
     } else {
@@ -1939,7 +2050,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // Keep input locked between hits and give Bob's hit animation time to finish.
-    if (this.enemyAttackDamages.length > 0) {
+    if (this.enemyActions.length > 0) {
       this.time.delayedCall(this.enemyAbility.hitDelay, () => {
         if (!this.battleWon && !this.battleLost) {
           this.playEnemyAttackAnimation();
@@ -2010,7 +2121,8 @@ export default class MainScene extends Phaser.Scene {
       return this.enemyConfig.baseDamage - extraTiles * matchReduction.damagePerExtraTile;
     }
     // Increasing pressure rewards larger matches and cascades over basic matches.
-    return this.enemyConfig.baseDamage + this.enemyAttackCount * this.enemyConfig.damageIncrease;
+    return this.enemyConfig.baseDamage + this.enemyAttackCount * this.enemyConfig.damageIncrease
+      + this.deadlineDamageBonus;
   }
 
   // =====================================

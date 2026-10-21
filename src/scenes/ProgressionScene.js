@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import enemies from '../game/Enemies.js';
 
 export default class ProgressionScene extends Phaser.Scene {
   constructor() {
@@ -15,7 +16,8 @@ export default class ProgressionScene extends Phaser.Scene {
       completedEncounterId: data.completedEncounterId ?? null,
       nextEncounterIndex: data.nextEncounterIndex ?? 0,
       playerMorale: data.playerMorale ?? 100,
-      playerMaxMorale: data.playerMaxMorale ?? 100
+      playerMaxMorale: data.playerMaxMorale ?? 100,
+      hrVisited: data.hrVisited ?? false
     };
   }
 
@@ -25,10 +27,14 @@ export default class ProgressionScene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const nextEncounterId = this.progression.completedEncounterId === 'printosaurus'
-      ? 'cardboardMimic' : null;
+    const isBreak = ['joblin', 'cardboardMimic'].includes(this.progression.completedEncounterId);
+    const nextEncounters = {
+      printosaurus: 'cardboardMimic',
+      deadlineDemon: 'necromanager'
+    };
+    const nextEncounterId = nextEncounters[this.progression.completedEncounterId];
 
-    this.add.text(width / 2, height / 2 - 140, this.progression.completedEncounterId === 'joblin' ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
+    this.add.text(width / 2, height / 2 - 140, isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
       fontSize: '30px',
       color: '#ffffff',
       fontFamily: 'Arial',
@@ -44,9 +50,9 @@ export default class ProgressionScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
     // =====================================
-    // PAUSE EFTER JOBLIN
+    // PAUSE EFTER JOBLIN OG PAPKASSEMIMIK
     // =====================================
-    if (this.progression.completedEncounterId === 'joblin') {
+    if (isBreak) {
       this.add.text(width / 2, height / 2 - 30,
         'Where would you like to go?', {
           fontSize: '18px',
@@ -76,19 +82,32 @@ export default class ProgressionScene extends Phaser.Scene {
         this.scene.start('LunchScene', this.progression);
       });
 
-      this.add.rectangle(width / 2 + 140, height / 2 + 40, 240, 60, 0x333333)
-        .setStrokeStyle(3, 0x777777);
+      const hrButton = this.add.rectangle(width / 2 + 140, height / 2 + 40, 240, 60, 0x555555)
+        .setStrokeStyle(3, 0xffffff)
+        .setInteractive({ useHandCursor: true });
 
-      this.add.text(width / 2 + 140, height / 2 + 40, 'HR\nCOMING SOON', {
+      this.add.text(width / 2 + 140, height / 2 + 40, this.progression.hrVisited ? 'HR\nVISITED' : 'HR', {
         fontSize: '18px',
-        color: '#888888',
+        color: '#ffffff',
         fontFamily: 'Arial',
         fontStyle: 'bold',
         align: 'center'
       }).setOrigin(0.5);
 
+      hrButton.on('pointerover', () => hrButton.setFillStyle(0x777777));
+      hrButton.on('pointerout', () => hrButton.setFillStyle(0x555555));
+      hrButton.on('pointerdown', () => {
+        hrButton.disableInteractive();
+        lunchButton.disableInteractive();
+        this.scene.start('HRScene', this.progression);
+      });
+      if (this.progression.hrVisited) {
+        hrButton.disableInteractive();
+        hrButton.setFillStyle(0x333333).setStrokeStyle(3, 0x777777);
+      }
+
     } else if (nextEncounterId) {
-      this.add.text(width / 2, height / 2 - 30, 'NEXT: CARDBOARD MIMIC', {
+      this.add.text(width / 2, height / 2 - 30, `NEXT: ${enemies[nextEncounterId].name}`, {
         fontSize: '20px', color: '#ffffff', fontFamily: 'Arial'
       }).setOrigin(0.5);
 
@@ -112,9 +131,7 @@ export default class ProgressionScene extends Phaser.Scene {
       });
     } else {
       this.add.text(width / 2, height / 2 + 20,
-        this.progression.completedEncounterId === 'cardboardMimic'
-          ? 'Next: Deadline Demon.\nThis boss encounter is coming soon.'
-          : 'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
+        'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
           fontSize: '18px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
         }).setOrigin(0.5);
     }

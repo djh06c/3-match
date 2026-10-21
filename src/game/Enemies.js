@@ -10,7 +10,7 @@ const enemies = {
     id: 'joblin',
     name: 'JOBLIN',
     maxHP: 100,
-    baseDamage: 5,
+    baseDamage: 4,
     damageIncrease: 1,
     abilities: [
       {
@@ -113,6 +113,104 @@ const enemies = {
       enemyLowHP: ['Some assembly required.'],
       enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.'],
       defeat: ['Package successfully delivered.']
+    }
+  },
+  // =====================================
+  // DEADLINE DEMON
+  // =====================================
+  deadlineDemon: {
+    id: 'deadlineDemon',
+    name: 'DEADLINE DEMON',
+    abilities: [
+      {
+        id: 'risingExpectations',
+        type: 'growingMatchRequirement',
+        startingRequirement: 3,
+        movesPerIncrease: 3,
+        description: 'Deadline Demon deals 5 damage. Moves 1-2 require a 3-match, moves 3-5 require a 4-match, moves 6-8 require a 5-match, and so on. Your largest initial match counts, plus 1 per cascade wave, regardless of its tile count. Missing the target permanently adds 1 damage to his attacks. Only valid normal moves advance the requirement.'
+      }
+    ],
+    introReadTime: 3500,
+    maxHP: 100,
+    baseDamage: 5,
+    damageIncrease: 0,
+    scale: 3,
+    hitDuration: 1000,
+    victoryText: 'DEADLINE MET!',
+    textures: {
+      idle: 'DeadlineDemonIdle', attack: 'DeadlineDemonAttack',
+      hit: 'DeadlineDemonHit', death: 'DeadlineDemonDeath'
+    },
+    assets: [
+      { key: 'DeadlineDemonIdle', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonAttack', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonAttack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonHit', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonDeath', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+    ],
+    animations: {
+      idle: { key: 'deadline-demon-idle', start: 0, end: 3, frameRate: 4, repeat: -1 },
+      attack: { key: 'deadline-demon-attack', start: 0, end: 13, frameRate: 10, repeat: 0 },
+      hit: { key: 'deadline-demon-hit', start: 0, end: 4, frameRate: 10, repeat: 0 },
+      death: { key: 'deadline-demon-death', start: 0, end: 24, frameRate: 10, repeat: 0 }
+    },
+    dialogue: {
+      intro: ['This task belonged to the previous hire. It became yours when you signed the contract.'],
+      enemyAction: [
+        'I can make the deadline yesterday with the swipe of a pen.',
+        'The previous hire said it was almost finished.',
+        'You signed the contract. The deadline signed you.',
+        'I have extended the scope. The deadline stays.',
+        'Consider this your final reminder. Again.',
+        'We needed this yesterday. I can make that official.'
+      ]
+    }
+  },
+  // =====================================
+  // NECROMANAGER
+  // =====================================
+  necromanager: {
+    id: 'necromanager',
+    name: 'NECROMANAGER',
+    y: 125,
+    maxHP: 100,
+    baseDamage: 5,
+    damageIncrease: 0,
+    scale: 3,
+    hitDuration: 1000,
+    victoryText: 'MANAGEMENT HANDLED!',
+    abilities: [
+      {
+        id: 'summonComplaint', type: 'copyRound', everyTurns: 3,
+        dialogueEvent: 'summon', offsetX: -65, hitDelay: 1200,
+        description: 'After every third round you play, the Necromanager gets tired of your S#%T! Whatever you do can and will be used against you'
+      }
+    ],
+    textures: {
+      idle: 'NecromanagerIdle', attack: 'NecromanagerThrow',
+      hit: 'NecromanagerIdle', death: 'NecromanagerIdle',
+      summon: 'NecromanagerSummon', summoned: 'NecromanagerSummoned'
+    },
+    assets: [
+      { key: 'NecromanagerIdle', path: new URL('../../assets/mobs/Necromanager/Necromanager - Idle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerThrow', path: new URL('../../assets/mobs/Necromanager/Necromanager - Throw.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummon', path: new URL('../../assets/mobs/Necromanager/Necromanager - Summon.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummoned', path: new URL('../../assets/mobs/Necromanager/Thesummoned.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+    ],
+    animations: {
+      idle: { key: 'necromanager-idle', start: 0, end: 6, frameRate: 8, repeat: -1 },
+      attack: { key: 'necromanager-throw', start: 0, end: 9, frameRate: 10, repeat: 0 },
+      summon: { key: 'necromanager-summon', start: 0, end: 12, frameRate: 10, repeat: 0 },
+      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0 }
+    },
+    dialogue: {
+      enemyAction: [
+        'I am not paid enough to manage you.',
+        'Manage THIS!',
+        'Let us circle back to your performance.',
+        'I need you to take ownership of this.',
+        'We are like a family. A very understaffed family.'
+      ],
+      summon: ['That wasn\'t me, technically.']
     }
   },
   // =====================================

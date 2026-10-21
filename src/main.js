@@ -6,6 +6,7 @@ import MainScene from './scenes/MainScene.js';
 import MainMenuScene from './scenes/MainMenuScene.js';
 import ProgressionScene from './scenes/ProgressionScene.js';
 import LunchScene from './scenes/LunchScene.js';
+import HRScene from './scenes/HRScene.js';
 
 // =====================================
 // SPILLETS OPSÆTNING
@@ -25,7 +26,8 @@ const config = {
     MainMenuScene,
     MainScene,
     ProgressionScene,
-    LunchScene
+    LunchScene,
+    HRScene
   ]
 };
 
