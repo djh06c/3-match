@@ -126,6 +126,20 @@ export default class HRScene extends Phaser.Scene {
     ];
     const choiceButtons = [];
     let speaking = false;
+    const showContinue = onContinue => {
+      const button = this.add.rectangle(width / 2, height - 115,
+        240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+      const label = this.add.text(width / 2, height - 115, 'CONTINUE', {
+        fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
+      }).setOrigin(0.5);
+      button.once('pointerdown', () => {
+        button.disableInteractive();
+        button.destroy();
+        label.destroy();
+        onContinue();
+      });
+    };
     const leaveHR = (goToLunch = false) => {
       if (goToLunch) {
         this.scene.start('LunchScene', this.progression);
@@ -137,7 +151,11 @@ export default class HRScene extends Phaser.Scene {
           playerMaxMorale: this.progression.playerMaxMorale
         });
       } else {
-        this.scene.start('ProgressionScene', { ...this.progression, hrVisited: true });
+        speak('Remember to enjoy our free fruits.', () => {
+          showContinue(() => {
+            this.scene.start('ProgressionScene', { ...this.progression, hrVisited: true });
+          });
+        });
       }
     };
 
@@ -201,8 +219,12 @@ export default class HRScene extends Phaser.Scene {
 
         speak(choice.reply, () => {
           if (choice.leave) {
-            // Lad spilleren nå at læse afskeden, inden scenen skifter.
-            this.time.delayedCall(1500, () => leaveHR(choice.goToLunch));
+            if (!secondVisit) {
+              showContinue(() => leaveHR());
+            } else {
+              // Lad spilleren nå at læse afskeden, inden scenen skifter.
+              this.time.delayedCall(1500, () => leaveHR(choice.goToLunch));
+            }
           } else if (choice.moraleBoost) {
             const healedMorale = Math.min(choice.moraleBoost,
               this.progression.playerMaxMorale - this.progression.playerMorale);
@@ -210,16 +232,7 @@ export default class HRScene extends Phaser.Scene {
             this.updateOverview();
             dialogue.setText(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
 
-            const continueButton = this.add.rectangle(width / 2, height - 115,
-              240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
-              .setInteractive({ useHandCursor: true });
-            this.add.text(width / 2, height - 115, 'CONTINUE', {
-              fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
-            }).setOrigin(0.5);
-            continueButton.once('pointerdown', () => {
-              continueButton.disableInteractive();
-              leaveHR();
-            });
+            showContinue(() => leaveHR());
           } else {
             updateChoices(true);
           }

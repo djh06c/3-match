@@ -1158,7 +1158,13 @@ export default class MainScene extends Phaser.Scene {
     this.freeAIMove = false;
 
     if (!result.valid) {
+      const moraleBeforePenalty = this.PlayerHP;
       this.damagePlayer(5);
+      if (this.copyRoundAbility) {
+        this.playerRoundActions.push({
+          type: 'selfDamage', amount: moraleBeforePenalty - this.PlayerHP
+        });
+      }
       if (this.PlayerHP <= 0) {
         this.loseBattle();
         return;
@@ -1997,7 +2003,7 @@ export default class MainScene extends Phaser.Scene {
       this.enemyBaseY;
 
     const nextAction = this.enemyActions[0];
-    if (nextAction?.type === 'heal') {
+    if (nextAction?.type === 'heal' || nextAction?.type === 'selfDamage') {
       this.enemy.play(this.enemyConfig.animations.idle.key);
       this.time.delayedCall(1200, () => this.finishEnemyAttack());
       return;
@@ -2060,7 +2066,13 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTurnDamage += damage;
 
     const healedMorale = damage < 0 ? Math.min(-damage, this.PlayerMaxHP - this.PlayerHP) : 0;
-    if (action.type === 'heal') {
+    if (action.type === 'selfDamage') {
+      this.damageEnemy(action.amount);
+      if (this.EnemyHP <= 0) {
+        this.winBattle();
+        return;
+      }
+    } else if (action.type === 'heal') {
       this.EnemyHP = Math.min(this.EnemyMaxHP, this.EnemyHP + action.amount);
       this.updateEnemyHealthBar();
       this.statusText.setText(`${this.enemyConfig.name} copies your healing!`);
