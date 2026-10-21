@@ -2040,9 +2040,16 @@ export default class MainScene extends Phaser.Scene {
 
     this.enemy.stop();
 
-    this.enemy.setTexture(
-      this.enemyConfig.textures.hit
-    );
+    const hitAnimation = this.enemyConfig.animations.hit;
+
+    if (hitAnimation) {
+      this.enemy.play(hitAnimation.key);
+    } else {
+      this.enemy.setTexture(
+        this.enemyConfig.textures.hit,
+        0
+      );
+    }
 
     this.tweens.add({
       targets: this.enemy,

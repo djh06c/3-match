@@ -125,7 +125,7 @@ const enemies = {
     baseDamage: 5,
     damageIncrease: 0,
     abilities: [
-      {
+      { 
         id: 'inkSmudge',
         type: 'ink',
         minTurns: 1,
@@ -138,19 +138,25 @@ const enemies = {
     hitDuration: 1000,
     victoryText: 'PAPER JAM CLEARED!',
     textures: {
-      idle: 'PrinterIdle', attack: 'PrinterAttack',
-      hit: 'PrinterNormal', death: 'PrinterNormal', spawn: 'PrinterSpawn'
+      idle: 'PrinterIdle', 
+      attack: 'PrinterAttack',
+      hit: 'PrinterTakeDMG', 
+      death: 'PrinterDeath', 
+      spawn: 'PrinterSpawn'
     },
     assets: [
       { key: 'PrinterSpawn', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusSpawn.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
       { key: 'PrinterIdle', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
       { key: 'PrinterAttack', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDealDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterNormal', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusNormal.png', import.meta.url).href }
-    ],
+      { key: 'PrinterDeath', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterTakeDMG', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64},
+    ], 
     animations: {
       idle: { key: 'printer-idle', start: 0, end: 1, frameRate: 2, repeat: -1 },
       spawn: { key: 'printer-spawn', start: 0, end: 18, frameRate: 10, repeat: 0 },
-      attack: { key: 'printer-attack', start: 0, end: 17, frameRate: 10, repeat: 0 }
+      attack: { key: 'printer-attack', start: 0, end: 17, frameRate: 10, repeat: 0 },
+      hit: { key: 'printer-hit', start: 0, end: 5, frameRate: 10, repeat: 0},
+      death: { key: 'printer-death', start: 0, end: 19, frameRate: 10, repeat: 0}
     },
     dialogue: {
       intro: ['PC LOAD LETTER. Good luck with that.'],
