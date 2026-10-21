@@ -526,7 +526,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         width * 0.25,
         224,
-        '100 / 100',
+        `${this.PlayerHP} / ${this.PlayerMaxHP}`,
         {
           fontSize: '9px',
           color: '#ffffff',
@@ -567,7 +567,7 @@ export default class MainScene extends Phaser.Scene {
       this.add.text(
         width * 0.75,
         224,
-        '100 / 100',
+        `${this.EnemyHP} / ${this.EnemyMaxHP}`,
         {
           fontSize: '9px',
           color: '#ffffff',
