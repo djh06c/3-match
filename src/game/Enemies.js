@@ -219,6 +219,7 @@ const enemies = {
   printosaurus: {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',
+    y: 135,
     maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
