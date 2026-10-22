@@ -31,6 +31,7 @@ export default class LunchScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const secondVisit = this.progression.completedEncounterId === 'cardboardMimic';
+    const thirdVisit = this.progression.completedEncounterId === 'necromanager';
     const boosters = this.registry.get('aiBoosters') ?? { suspicion: 0 };
     const unlockedPowers = boosters.unlockedPowers ?? (boosters.selectedPower ? [boosters.selectedPower] : []);
 
@@ -101,8 +102,10 @@ export default class LunchScene extends Phaser.Scene {
         repeat: -1
       });
     }
-    this.add.sprite(170, height / 2 + 50, 'mysteriousColleague')
-      .setScale(2).play('mysterious-colleague-idle');
+    if (!thirdVisit) {
+      this.add.sprite(170, height / 2 + 50, 'mysteriousColleague')
+        .setScale(2).play('mysterious-colleague-idle');
+    }
 
     const dialogue = this.add.text(width / 2, height - 205, '', {
       fontSize: '16px',
@@ -112,11 +115,12 @@ export default class LunchScene extends Phaser.Scene {
       align: 'center',
       padding: { x: 12, y: 10 },
       wordWrap: { width: 620 }
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setVisible(!thirdVisit);
 
     // Stop den forrige skriveeffekt, hvis spilleren vælger et svar undervejs.
     let dialogueTimer = null;
     const typeDialogue = message => {
+      if (thirdVisit) return;
       dialogueTimer?.remove();
       dialogue.setText('MYSTERIOUS COLLEAGUE\n');
       let characterCount = 0;
@@ -140,23 +144,28 @@ export default class LunchScene extends Phaser.Scene {
       { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +15 Suspicion per use.' },
       { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. Suspicion = healing.' }
     ];
+    if (thirdVisit) {
+      powers.push({ id: 'tileSwap', uses: 1, title: 'TILE SWAP', text: 'Drag any tile onto another to swap them.\nUses your turn. +20 Suspicion.', keepTurn: false });
+    }
     const choiceButtons = [];
     const choiceLabels = [];
 
     for (let index = 0; index < powers.length; index++) {
       const power = powers[index];
-      const x = width / 2 + (index === 0 ? -170 : 170);
-      const choiceButton = this.add.rectangle(x, height - 115, 320, 82, 0x555555)
+      const x = thirdVisit ? width / 2 : width / 2 + (index === 0 ? -170 : 170);
+      const y = thirdVisit ? height - 320 + index * 95 : height - 115;
+      const choiceButton = this.add.rectangle(x, y, thirdVisit ? 600 : 320, 82, 0x555555)
         .setStrokeStyle(2, 0xffffff)
         .setInteractive({ useHandCursor: true });
-      const choiceLabel = this.add.text(x, height - 115,
-        `${power.title}\n${power.text}\n${power.uses} use(s) per fight. Keep your turn.`, {
+      const choiceLabel = this.add.text(x, y,
+        `${power.title}\n${power.text}\n${power.uses} use(s) per fight.${power.keepTurn === false ? '' : ' Keep your turn.'}`, {
           fontSize: '13px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
         }).setOrigin(0.5);
       choiceButtons.push(choiceButton);
       choiceLabels.push(choiceLabel);
       if (unlockedPowers.includes(power.id) || this.progression.lunchChoiceMade) {
         choiceButton.disableInteractive().setFillStyle(0x333333);
+        choiceLabel.setColor('#888888');
         if (unlockedPowers.includes(power.id)) choiceLabel.setText(`${power.title} UNLOCKED`);
       }
 
@@ -196,7 +205,7 @@ export default class LunchScene extends Phaser.Scene {
       }
       button.disableInteractive();
       this.scene.start('MainScene', {
-        encounterId: secondVisit ? 'deadlineDemon' : 'printosaurus',
+        encounterId: thirdVisit ? 'ceoOverlord' : secondVisit ? 'deadlineDemon' : 'printosaurus',
         encounterIndex: this.progression.nextEncounterIndex,
         playerMorale: this.progression.playerMorale,
         playerMaxMorale: this.progression.playerMaxMorale

@@ -367,6 +367,7 @@ export default class MainScene extends Phaser.Scene {
           start: animation.start,
           end: animation.end
         });
+        if (animation.reverse) frames.reverse();
         if (animation.holdFrame !== undefined) {
           // Varigheden lægges oven i billedets normale visningstid.
           frames[animation.holdFrame - animation.start].duration = animation.extraFrames * 1000 / animation.frameRate;
@@ -831,7 +832,7 @@ export default class MainScene extends Phaser.Scene {
     this.aiMenu = null;
     this.aiHint = null;
     this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 2;
-    this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3 };
+    this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3, tileSwap: 1 };
     this.freeAIMove = false;
     this.supervisorActive = false;
     this.suspicionRecovered = false;
@@ -894,20 +895,23 @@ export default class MainScene extends Phaser.Scene {
     this.board.setState('AI_MENU');
     this.aiMenu = this.add.container(0, 0).setDepth(60);
     const shade = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.65).setInteractive();
-    const panel = this.add.rectangle(400, 350, 600, 340, 0x222222).setStrokeStyle(2, 0xffffff);
-    const title = this.add.text(400, 215, 'AI BOOSTERS', {
+    const panel = this.add.rectangle(400, 365, 600, 450, 0x222222).setStrokeStyle(2, 0xffffff);
+    const title = this.add.text(400, 175, 'AI BOOSTERS', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5);
     this.aiMenu.add([shade, panel, title]);
     for (let index = 0; index < this.aiBoosters.unlockedPowers.length; index++) {
       const power = this.aiBoosters.unlockedPowers[index];
-      const y = 295 + index * 105;
+      const y = 260 + index * 110;
       const healing = power === 'moraleBoost';
-      const powerName = healing ? 'MORALE BOOST' : 'BEST MOVE';
-      const effect = healing
+      const swapping = power === 'tileSwap';
+      const powerName = swapping ? 'TILE SWAP' : healing ? 'MORALE BOOST' : 'BEST MOVE';
+      const effect = swapping
+        ? 'Drag any tile onto another to swap them.\nUses your turn. No extra move.'
+        : healing
         ? 'Recover 10 Morale. Keep your turn.'
         : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
-      const suspicionCost = healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
+      const suspicionCost = swapping ? 20 : healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
       const useButton = this.add.rectangle(400, y, 560, 95, 0x555555)
         .setInteractive({ useHandCursor: true });
       if (this.aiUsesRemaining[power] <= 0) {
@@ -921,11 +925,12 @@ export default class MainScene extends Phaser.Scene {
       useButton.on('pointerdown', () => {
         this.aiBoosters.selectedPower = power;
         this.aiPowerUsesRemaining = this.aiUsesRemaining[power];
-        if (healing) this.useMoraleBoost();
+        if (swapping) this.useTileSwap();
+        else if (healing) this.useMoraleBoost();
         else this.useBestMove();
       });
     }
-    const close = this.add.text(400, 485, 'CLOSE', {
+    const close = this.add.text(400, 565, 'CLOSE', {
       fontSize: '18px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.aiMenu.add(close);
@@ -938,6 +943,29 @@ export default class MainScene extends Phaser.Scene {
     if (this.board.state === 'AI_MENU') {
       this.board.setState('IDLE');
     }
+  }
+
+  // =====================================
+  // AI-EVNE: FRIT BRIKBYT
+  // =====================================
+  useTileSwap() {
+    if (this.board.state !== 'AI_MENU' || this.aiUsesRemaining.tileSwap <= 0
+      || this.aiBoosters.selectedPower !== 'tileSwap'
+      || this.supervisorActive || this.battleWon || this.battleLost) return;
+    this.closeAIMenu();
+    this.statusText.setText('Drag a tile onto another tile. This uses your turn.');
+    const cancel = this.add.text(75, 675, 'CANCEL SWAP', {
+      fontFamily: 'Arial', fontSize: '12px', color: '#ffff88'
+    }).setOrigin(0.5).setDepth(40).setInteractive({ useHandCursor: true });
+    cancel.once('pointerdown', () => {
+      this.board.cancelManualSwap();
+      cancel.destroy();
+      this.statusText.setText('Your turn.');
+    });
+    this.board.beginManualSwap(() => {
+      cancel.destroy();
+      this.finishAIPowerUse(20);
+    });
   }
 
   // =====================================
@@ -2320,6 +2348,9 @@ export default class MainScene extends Phaser.Scene {
         this.enemy.once(
           `animationcomplete-${this.enemyConfig.animations.death.key}`,
           () => {
+            if (this.enemyConfig.hideAfterDeath) {
+              this.enemy.setVisible(false);
+            }
             this.showGameWon();
             if (this.enemyConfig.defeatClickMorale) {
               this.showBobSpeechBubble('I should clean up after myself');

@@ -27,14 +27,16 @@ export default class ProgressionScene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const isBreak = ['joblin', 'cardboardMimic'].includes(this.progression.completedEncounterId);
+    const campaignComplete = this.progression.completedEncounterId === 'ceoOverlord';
+    const isBreak = ['joblin', 'cardboardMimic', 'necromanager'].includes(this.progression.completedEncounterId);
     const nextEncounters = {
       printosaurus: 'cardboardMimic',
       deadlineDemon: 'necromanager'
     };
     const nextEncounterId = nextEncounters[this.progression.completedEncounterId];
 
-    this.add.text(width / 2, height / 2 - 140, isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
+    this.add.text(width / 2, height / 2 - 140,
+      campaignComplete ? 'Thank you for playing' : isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
       fontSize: '30px',
       color: '#ffffff',
       fontFamily: 'Arial',
@@ -42,15 +44,17 @@ export default class ProgressionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 85,
+    if (!campaignComplete) {
+      this.add.text(width / 2, height / 2 - 85,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
         fontSize: '20px',
         color: '#ffff88',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
+    }
 
     // =====================================
-    // PAUSE EFTER JOBLIN OG PAPKASSEMIMIK
+    // PAUSE EFTER JOBLIN, PAPKASSEMIMIK OG NECROMANAGER
     // =====================================
     if (isBreak) {
       this.add.text(width / 2, height / 2 - 30,
@@ -129,7 +133,7 @@ export default class ProgressionScene extends Phaser.Scene {
           playerMaxMorale: this.progression.playerMaxMorale
         });
       });
-    } else {
+    } else if (!campaignComplete) {
       this.add.text(width / 2, height / 2 + 20,
         'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
           fontSize: '18px', color: '#ffffff', fontFamily: 'Arial', align: 'center'

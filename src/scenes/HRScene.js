@@ -90,14 +90,27 @@ export default class HRScene extends Phaser.Scene {
   showConversation() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const secondVisit = this.progression.completedEncounterId === 'cardboardMimic';
+    const thirdVisit = this.progression.completedEncounterId === 'necromanager';
+    const secondVisit = this.progression.completedEncounterId === 'cardboardMimic' || thirdVisit;
     const dialogue = this.add.text(width / 2, height - 260, 'HR\n', {
         fontFamily: 'Arial', fontSize: '18px', color: '#ffffff',
         backgroundColor: '#222222', padding: { x: 16, y: 12 },
         align: 'center', wordWrap: { width: 660 }
       }).setOrigin(0.5);
 
-    const choices = secondVisit ? [
+    const choices = thirdVisit ? [
+      {
+        text: '(Talk it out +25 Morale) Me? Is it bad?? What did I do?',
+        reply: 'I can\'t really say. Go see him - but I\'m sure you\'ll be fine.',
+        moraleBoost: 25
+      },
+      {
+        text: 'Meh, I\'ll do it after lunch (Go to lunch)',
+        reply: 'Hah! I also stress eat - my wife hates it...',
+        leave: true,
+        goToLunch: true
+      }
+    ] : secondVisit ? [
       {
         text: 'I feel like this work environment is a bit... hostile? (+40 Morale)',
         reply: 'WhHaaAt? Impossible. I will talk to someone about this, at some point. '
@@ -126,11 +139,11 @@ export default class HRScene extends Phaser.Scene {
     ];
     const choiceButtons = [];
     let speaking = false;
-    const showContinue = onContinue => {
-      const button = this.add.rectangle(width / 2, height - 115,
-        240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
+    const showContinue = (onContinue, caption = 'CONTINUE', y = height - 115) => {
+      const button = this.add.rectangle(width / 2, y,
+        thirdVisit ? 720 : 240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(width / 2, height - 115, 'CONTINUE', {
+      const label = this.add.text(width / 2, y, caption, {
         fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
       }).setOrigin(0.5);
       button.once('pointerdown', () => {
@@ -145,7 +158,7 @@ export default class HRScene extends Phaser.Scene {
         this.scene.start('LunchScene', this.progression);
       } else if (secondVisit) {
         this.scene.start('MainScene', {
-          encounterId: 'deadlineDemon',
+          encounterId: thirdVisit ? 'ceoOverlord' : 'deadlineDemon',
           encounterIndex: this.progression.nextEncounterIndex,
           playerMorale: this.progression.playerMorale,
           playerMaxMorale: this.progression.playerMaxMorale
@@ -219,7 +232,9 @@ export default class HRScene extends Phaser.Scene {
 
         speak(choice.reply, () => {
           if (choice.leave) {
-            if (!secondVisit) {
+            if (thirdVisit) {
+              showContinue(() => leaveHR(true));
+            } else if (!secondVisit) {
               showContinue(() => leaveHR());
             } else {
               // Lad spilleren nå at læse afskeden, inden scenen skifter.
@@ -232,7 +247,13 @@ export default class HRScene extends Phaser.Scene {
             this.updateOverview();
             dialogue.setText(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
 
-            showContinue(() => leaveHR());
+            if (thirdVisit) {
+              showContinue(() => leaveHR(), 'Go see the CEO', height - 175);
+              showContinue(() => this.scene.start('MainMenuScene'),
+                'I CANT DO THIS ANYMORE! (Go to main menu)', height - 115);
+            } else {
+              showContinue(() => leaveHR());
+            }
           } else {
             updateChoices(true);
           }
@@ -240,7 +261,9 @@ export default class HRScene extends Phaser.Scene {
       });
     }
 
-    const greeting = secondVisit
+    const greeting = thirdVisit
+      ? 'Here we are again, huh? So, I spoke to the higher-ups and, uhm... the boss wants to see you.'
+      : secondVisit
       ? 'Good to see you again. Just know that this meeting will make you miss lunch.'
       : 'Ah, the new hire! Nice to meet you. What can I do for you?';
     speak(greeting, () => {

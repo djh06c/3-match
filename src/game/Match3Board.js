@@ -144,7 +144,11 @@ export default class Match3Board {
     // udenfor en tile.
     this.scene.input.on(
       'pointerup',
-      () => {
+      pointer => {
+        if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+          this.handlePointerUp(this.dragStartTile, pointer);
+          return;
+        }
         if (
           this.pointerDown &&
           !this.dragSwapTriggered
@@ -153,6 +157,11 @@ export default class Match3Board {
         }
       }
     );
+    this.scene.input.on('pointermove', pointer => {
+      if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+        this.dragStartTile.setPosition(pointer.worldX, pointer.worldY);
+      }
+    });
   }
 
   // =====================================
@@ -188,6 +197,27 @@ export default class Match3Board {
       }
     }
     this.updateSelectionVisuals();
+  }
+
+  // =====================================
+  // FRIT BRIKBYT MED AI
+  // =====================================
+  beginManualSwap(onCommit) {
+    this.resetPointerState();
+    this.selectedCell = null;
+    this.updateSelectionVisuals();
+    this.manualSwapCommit = onCommit;
+    this.setState('AI_TILE_SWAP');
+  }
+
+  cancelManualSwap() {
+    if (this.dragStartTile) {
+      const position = this.getCellPosition(this.dragStartTile.gridRow, this.dragStartTile.gridCol);
+      this.dragStartTile.setPosition(position.x, position.y);
+    }
+    this.resetPointerState();
+    this.manualSwapCommit = null;
+    this.setState('IDLE');
   }
 
   setState(state) {
@@ -432,13 +462,14 @@ export default class Match3Board {
     pointer
   ) {
     if (
-      this.state !== 'IDLE'
+      this.state !== 'IDLE' && this.state !== 'AI_TILE_SWAP'
     ) {
       return;
     }
 
     this.pointerDown = true;
     this.dragStartTile = tile;
+    if (this.state === 'AI_TILE_SWAP') this.container.bringToTop(tile);
     this.dragSwapTriggered = false;
   }
 
@@ -497,6 +528,18 @@ export default class Match3Board {
     tile,
     pointer
   ) {
+    if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+      const start = this.dragStartTile;
+      const row = Math.floor((pointer.worldY - this.y) / this.tileSize);
+      const col = Math.floor((pointer.worldX - this.x) / this.tileSize);
+      const position = this.getCellPosition(start.gridRow, start.gridCol);
+      start.setPosition(position.x, position.y);
+      this.resetPointerState();
+      if (this.grid.inBounds(row, col) && (row !== start.gridRow || col !== start.gridCol)) {
+        await this.performSwap(start.gridRow, start.gridCol, row, col, true);
+      }
+      return;
+    }
     if (
       !this.pointerDown
     ) {
@@ -614,10 +657,11 @@ export default class Match3Board {
     firstRow,
     firstCol,
     secondRow,
-    secondCol
+    secondCol,
+    manualSwap = false
   ) {
     if (
-      this.state !== 'IDLE'
+      this.state !== 'IDLE' && !(manualSwap && this.state === 'AI_TILE_SWAP')
     ) {
       return;
     }
@@ -651,6 +695,10 @@ export default class Match3Board {
     // ANIMERET BRIKBYT
     // =====================================
 
+    if (manualSwap) {
+      this.manualSwapCommit();
+      this.manualSwapCommit = null;
+    }
     await this.animateSwap(
       tileA,
       tileB
@@ -660,13 +708,18 @@ export default class Match3Board {
     // LOGISK BRIKBYT
     // =====================================
 
-    const success =
-      this.grid.trySwap(
+    let success;
+    if (manualSwap) {
+      this.grid.swapCells(firstRow, firstCol, secondRow, secondCol);
+      success = true;
+    } else {
+      success = this.grid.trySwap(
         firstRow,
         firstCol,
         secondRow,
         secondCol
       );
+    }
 
     // =====================================
     // UGYLDIGT TRÆK

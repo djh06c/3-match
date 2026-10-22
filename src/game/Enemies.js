@@ -111,8 +111,7 @@ const enemies = {
       combo: ['One package at a time, please!'],
       playerLowMorale: ['You look ready to be boxed up.'],
       enemyLowHP: ['Some assembly required.'],
-      enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.'],
-      defeat: ['Package successfully delivered.']
+      enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.']
     }
   },
   // =====================================
@@ -166,6 +165,45 @@ const enemies = {
     }
   },
   // =====================================
+  // CEOVERLORD
+  // =====================================
+  ceoOverlord: {
+    id: 'ceoOverlord',
+    name: 'CEO-VERLORD',
+    hideAfterDeath: true,
+    maxHP: 100,
+    baseDamage: 5,
+    damageIncrease: 0,
+    scale: 3,
+    hitDuration: 1000,
+    victoryText: 'CEO DEFEATED!',
+    textures: {
+      idle: 'CEOIdle', spawn: 'CEOOpening',
+      attack: 'CEOAttack', hit: 'CEOAttack', death: 'CEODeath'
+    },
+    assets: [
+      { key: 'CEOIdle', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - IDLE.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEOOpening', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - Opening.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEOAttack', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - attack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEODeath', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - Death.png', frameWidth: 64, frameHeight: 64 }
+    ],
+    animations: {
+      idle: { key: 'ceo-idle', start: 0, end: 5, frameRate: 8, repeat: -1 },
+      spawn: { key: 'ceo-opening', start: 0, end: 21, frameRate: 10, repeat: 0 },
+      attack: { key: 'ceo-attack', start: 0, end: 23, frameRate: 10, repeat: 0 },
+      death: { key: 'ceo-death', start: 0, end: 15, frameRate: 10, repeat: 0, reverse: true }
+    },
+    dialogue: {
+      enemyAction: [
+        'I won\'t burn the next one.',
+        'I can make these papers permanent.',
+        'Do you really want one of these on your desk?',
+        'Consider this a draft of your future.',
+        'The next copy goes straight to HR.'
+      ]
+    }
+  },
+  // =====================================
   // NECROMANAGER
   // =====================================
   necromanager: {
@@ -187,20 +225,22 @@ const enemies = {
     ],
     textures: {
       idle: 'NecromanagerIdle', attack: 'NecromanagerThrow',
-      hit: 'NecromanagerIdle', death: 'NecromanagerIdle',
+      hit: 'NecromanagerIdle', death: 'NecromanagerDeath',
       summon: 'NecromanagerSummon', summoned: 'NecromanagerSummoned'
     },
     assets: [
-      { key: 'NecromanagerIdle', path: new URL('../../assets/mobs/Necromanager/Necromanager - Idle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerThrow', path: new URL('../../assets/mobs/Necromanager/Necromanager - Throw.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerSummon', path: new URL('../../assets/mobs/Necromanager/Necromanager - Summon.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerSummoned', path: new URL('../../assets/mobs/Necromanager/Thesummoned.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'NecromanagerIdle', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Idle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerThrow', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Throw.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummon', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Summon.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummoned', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Thesummoned.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerDeath', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Death.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'necromanager-idle', start: 0, end: 6, frameRate: 8, repeat: -1 },
       attack: { key: 'necromanager-throw', start: 0, end: 9, frameRate: 10, repeat: 0 },
       summon: { key: 'necromanager-summon', start: 0, end: 12, frameRate: 10, repeat: 0 },
-      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0, holdFrame: 11, extraFrames: 4 }
+      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0, holdFrame: 11, extraFrames: 4 },
+      death: { key: 'necromanager-death', start: 0, end: 7, frameRate: 10, repeat: 0 }
     },
     dialogue: {
       enemyAction: [
