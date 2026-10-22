@@ -1149,17 +1149,18 @@ export default class MainScene extends Phaser.Scene {
     const tail = this.add.graphics();
     tail.fillStyle(0x1d272f, 1);
     tail.fillTriangle(148, 420, 170, 406, 170, 434);
-    const panel = roundedPanel(this, 380, 430, 430, 220, 0x1d272f);
+    const panel = roundedPanel(this, 380, 470, 430, 300, 0x1d272f);
     const text = this.add.text(185, 340, 'SUPERVISOR\n', {
       fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb',
       wordWrap: { width: 385 }, lineSpacing: 4
     });
-    const ok = roundedPanel(this, 380, 510, 74, 32, 0x354b4b).setVisible(false);
-    const okLabel = this.add.text(380, 510, 'OK', {
+    const ok = roundedPanel(this, 380, 590, 74, 32, 0x354b4b).setVisible(false);
+    const okLabel = this.add.text(380, 590, 'OK', {
       fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb'
     }).setOrigin(0.5).setVisible(false);
     bubble.add([blocker, tail, panel, text, ok, okLabel]);
-    const message = 'We have noticed a huge incline in your effectiveness and we would like to see you do it live.';
+    const message = 'We have noticed a huge incline in your effectiveness and we would like to see you do it live.'
+      + '\n\n(The enemy has gained 25 max HP and healed 25% of missing HP. AI powers are locked for this fight.)';
     let characterCount = 0;
     this.time.addEvent({
       delay: 25, repeat: message.length - 1,
