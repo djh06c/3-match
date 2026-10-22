@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
+import roundedPanel from '../ui/roundedPanel.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -24,9 +25,14 @@ export default class MainScene extends Phaser.Scene {
 
   preload() {
     this.load.image('inkStain',
-      new URL('../../assets/mobs/Printosaurus/Inkstain.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/Inkstain.png');
     this.load.image('aiChip',
-      new URL('../../assets/icons/Chip - AI.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/icons/Chip - AI.png');
+    for (let stage = 0; stage < 4; stage++) {
+      this.load.spritesheet(`supervisor-eye-${stage}`,
+        import.meta.env.BASE_URL + `assets/mobs/Extras/Supervisor_${stage * 25}-${(stage + 1) * 25}.png`,
+        { frameWidth: 64, frameHeight: 64 });
+    }
     // =====================================
     // IKONER TIL MATCH-3
     // =====================================
@@ -216,6 +222,11 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.battleWon = false;
     this.battleLost = false;
 
+    this.campaignScore = this.registry.get('campaignScore')
+      ?? { damage: 0, suspicionGained: 0, interventions: 0, retries: 0, fruitFound: false, boxFound: false };
+    this.startingCampaignScore = { ...this.campaignScore };
+    this.registry.set('campaignScore', this.campaignScore);
+
     // Scene instances are reused when TRY AGAIN restarts combat.
     this.gameWonText = null;
     this.gameOverText = null;
@@ -223,14 +234,17 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
+    this.banRoundsRemaining = 0;
     this.lastMoveTotalMatched = 0;
     this.freeMoveTilesMatched = 0;
     this.deadlineAbility = (this.enemyConfig.abilities ?? []).find(ability =>
-      ability.type === 'growingMatchRequirement'
+      ability.type === 'growingDamageRequirement'
     );
     this.deadlineMoveCount = 0;
     this.deadlineDamageBonus = 0;
+    this.deadlineRoundDamage = 0;
     this.deadlineRequirement = this.deadlineAbility?.startingRequirement ?? 0;
+    this.announcedDeadlineRequirement = this.deadlineRequirement;
     const inkAbility = (this.enemyConfig.abilities ?? []).find(ability => ability.type === 'ink');
     this.nextInkAttack = inkAbility
       ? Phaser.Math.Between(inkAbility.minTurns, inkAbility.maxTurns)
@@ -261,7 +275,6 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.enemyTypingTimer = null;
     this.bobTypingTimer = null;
     this.playerLowMoraleShown = false;
-    this.enemyLowHPShown = false;
 
     // =====================================
     // BOBS REPLIKKER
@@ -431,12 +444,18 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       const animation = this.enemyConfig.animations[action];
 
       if (!this.anims.exists(animation.key)) {
+        const frames = this.anims.generateFrameNumbers(this.enemyConfig.textures[action], {
+          start: animation.start,
+          end: animation.end
+        });
+        if (animation.reverse) frames.reverse();
+        if (animation.holdFrame !== undefined) {
+          // Varigheden lægges oven i billedets normale visningstid.
+          frames[animation.holdFrame - animation.start].duration = animation.extraFrames * 1000 / animation.frameRate;
+        }
         this.anims.create({
           key: animation.key,
-          frames: this.anims.generateFrameNumbers(this.enemyConfig.textures[action], {
-            start: animation.start,
-            end: animation.end
-          }),
+          frames,
           frameRate: animation.frameRate,
           repeat: animation.repeat
         });
@@ -589,7 +608,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       this.add.text(
         width * 0.25,
         224,
-        '100 / 100',
+        `${this.PlayerHP} / ${this.PlayerMaxHP}`,
         {
           fontSize: '9px',
           color: '#ffffff',
@@ -630,7 +649,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       this.add.text(
         width * 0.75,
         224,
-        '100 / 100',
+        `${this.EnemyHP} / ${this.EnemyMaxHP}`,
         {
           fontSize: '9px',
           color: '#ffffff',
@@ -865,21 +884,35 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         this.enemy.play(spawn.key);
       });
 
+      
       // Tile drop must not unlock input while the enemy is still spawning.
       await Promise.all([
         spawnFinished,
         this.board.playInitialDrop('ENCOUNTER_INTRO')
       ]);
 
-      if (this.battleWon || this.battleLost || !this.scene.isActive()) return;
+      if (this.battleWon || this.battleLost || !this.scene.isActive()) {
+        return;
+      }
 
       this.board.setState(readyState);
     } else {
       await this.board.playInitialDrop(readyState);
     }
 
-    this.showEnemyDialogue('intro');
+    // Vælg korrekt intro-dialog baseret på fjendens abilities
+    const startsWithBan = (this.enemyConfig.abilities ?? [])
+      .some(ability => ability.type === 'banTiles');
 
+    this.showEnemyDialogue(startsWithBan ? 'ban' : 'intro');
+
+    // Vis AI-hint, hvis den eksisterer
+    if (this.aiPowerHint) {
+      this.aiPowerHint.setVisible(true);
+      this.aiButton.setTint(0xffff00);
+    }
+
+    // Vent på introduktionen før spilleren kan fortsætte
     if (this.enemyConfig.introReadTime) {
       this.time.delayedCall(this.enemyConfig.introReadTime, () => {
         if (!this.battleWon && !this.battleLost) {
@@ -888,6 +921,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       });
     }
   }
+
 
 
   // =====================================
@@ -905,38 +939,82 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.aiMenu = null;
     this.aiHint = null;
     this.aiPowerUsesRemaining = this.aiBoosters.selectedPower === 'moraleBoost' ? 3 : 2;
-    this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3 };
+    this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3, tileSwap: 1 };
     this.freeAIMove = false;
     this.supervisorActive = false;
+    this.supervisorDialogueActive = false;
     this.suspicionRecovered = false;
 
-    const button = this.add.rectangle(75, 620, 100, 60, 0x333333)
-      .setStrokeStyle(2, 0xffffff).setDepth(20);
+    const button = this.add.image(90, 620, 'aiChip')
+      .setDisplaySize(90, 90).setDepth(20);
     this.aiButton = button;
-    this.add.image(75, 611, 'aiChip').setDisplaySize(28, 28).setDepth(21);
-    this.aiButtonText = this.add.text(75, 638, this.aiBoosters.unlocked ? 'AI' : 'AI LOCKED', {
-      fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
-    }).setOrigin(0.5).setDepth(21);
-
+    this.aiPowerHint = null;
+    if (this.encounterId === 'printosaurus' && this.aiBoosters.unlocked) {
+      this.aiPowerHint = this.add.text(90, 565, 'click here to use your powers', {
+        fontSize: '14px', color: '#ffff00', fontFamily: 'Arial',
+        align: 'center', wordWrap: { width: 140 }
+      }).setOrigin(0.5).setDepth(22).setVisible(false);
+    }
     if (this.aiBoosters.unlocked) {
       button.setInteractive({ useHandCursor: true });
       button.on('pointerdown', () => this.openAIMenu());
+    } else {
+      button.setAlpha(0.4);
     }
 
-    this.add.text(75, 295, 'SUPERVISOR', {
+    this.add.text(90, 295, 'SUPERVISOR', {
       fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5).setDepth(20);
-    this.add.rectangle(25, 318, 100, 12, 0x333333).setOrigin(0, 0.5).setDepth(20);
-    this.suspicionBar = this.add.rectangle(25, 318, 100, 12, 0xffaa33)
+    this.add.rectangle(40, 318, 100, 12, 0x333333).setOrigin(0, 0.5).setDepth(20);
+    this.suspicionBar = this.add.rectangle(40, 318, 100, 12, 0xffaa33)
       .setOrigin(0, 0.5).setDepth(21);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
-    this.suspicionText = this.add.text(75, 340,
+    this.suspicionText = this.add.text(90, 340,
       `Suspicion: ${this.aiBoosters.suspicion}/100`, {
         fontSize: '11px', color: '#ffffff', fontFamily: 'Arial'
       }).setOrigin(0.5).setDepth(20);
+    for (let stage = 0; stage < 4; stage++) {
+      const key = `supervisor-eye-${stage}`;
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
+          frameRate: 6, repeat: 0
+        });
+      }
+    }
+    this.supervisorEye = this.add.sprite(90, 420, 'supervisor-eye-0', 0)
+      .setScale(2).setDepth(20);
+    this.supervisorEyeStage = 0;
+    this.supervisorEyeHolding = false;
     if (this.aiBoosters.suspicion >= 100) {
       this.startSupervisorIntervention();
+    } else {
+      this.updateSupervisorEye(this.aiBoosters.suspicion, false);
     }
+  }
+
+  // =====================================
+  // SUPERVISORENS ØJE OG MISTANKETRIN
+  // =====================================
+  updateSupervisorEye(suspicion, animate = true) {
+    if (this.supervisorEyeHolding) return;
+    const stage = Math.min(4, Math.floor(suspicion / 25));
+    if (stage === this.supervisorEyeStage) return;
+    this.supervisorEyeStage = stage;
+    this.supervisorEye.stop();
+    const key = `supervisor-eye-${Math.max(0, stage - 1)}`;
+    this.supervisorEye.setTexture(key, stage === 0 ? 0 : 2);
+    if (animate && stage > 0) this.supervisorEye.play(key);
+  }
+
+  // =====================================
+  // FJERNELSE AF INTRODUKTION TIL AI-KNAPPEN
+  // =====================================
+  hideAIPowerHint() {
+    if (!this.aiPowerHint) return;
+    this.aiPowerHint.destroy();
+    this.aiPowerHint = null;
+    this.aiButton.clearTint();
   }
 
   // =====================================
@@ -951,41 +1029,52 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.board.setState('AI_MENU');
     this.aiMenu = this.add.container(0, 0).setDepth(60);
     const shade = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.65).setInteractive();
-    const panel = this.add.rectangle(400, 350, 600, 340, 0x222222).setStrokeStyle(2, 0xffffff);
-    const title = this.add.text(400, 215, 'AI BOOSTERS', {
+    const panel = roundedPanel(this, 400, 365, 600, 450, 0x1d272f);
+    const title = this.add.text(400, 175, 'AI BOOSTERS', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5);
     this.aiMenu.add([shade, panel, title]);
     for (let index = 0; index < this.aiBoosters.unlockedPowers.length; index++) {
       const power = this.aiBoosters.unlockedPowers[index];
-      const y = 295 + index * 105;
+      const y = 260 + index * 110;
       const healing = power === 'moraleBoost';
-      const powerName = healing ? 'MORALE BOOST' : 'BEST MOVE';
-      const effect = healing
+      const swapping = power === 'tileSwap';
+      const powerName = swapping ? 'TILE SWAP' : healing ? 'MORALE BOOST' : 'BEST MOVE';
+      const effect = swapping
+        ? 'Drag any tile onto another to swap them.\nUses your turn. No extra move.'
+        : healing
         ? 'Recover 10 Morale. Keep your turn.'
         : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
-      const suspicionCost = healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
-      const useButton = this.add.rectangle(400, y, 560, 95, 0x555555)
+      const suspicionCost = swapping ? 15 : healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 20;
+      const useButton = roundedPanel(this, 400, y, 552, 95)
         .setInteractive({ useHandCursor: true });
+      useButton.on('pointerover', () => useButton.setFillStyle(0x3b5057));
+      useButton.on('pointerout', () => useButton.setFillStyle(0x29343d));
       if (this.aiUsesRemaining[power] <= 0) {
-        useButton.disableInteractive().setFillStyle(0x333333);
+        useButton.disableInteractive().setFillStyle(0x202930);
       }
       const label = this.add.text(400, y,
         `${powerName} - ${this.aiUsesRemaining[power]} uses left this fight\n${effect}\n+${suspicionCost} Suspicion per use.`, {
-          fontSize: '15px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+          fontSize: '15px', color: this.aiUsesRemaining[power] > 0 ? '#edf1eb' : '#879399',
+          fontFamily: 'Arial', align: 'center', lineSpacing: 3
         }).setOrigin(0.5);
       this.aiMenu.add([useButton, label]);
       useButton.on('pointerdown', () => {
         this.aiBoosters.selectedPower = power;
         this.aiPowerUsesRemaining = this.aiUsesRemaining[power];
-        if (healing) this.useMoraleBoost();
+        if (swapping) this.useTileSwap();
+        else if (healing) this.useMoraleBoost();
         else this.useBestMove();
       });
     }
-    const close = this.add.text(400, 485, 'CLOSE', {
-      fontSize: '18px', color: '#ffffff', fontFamily: 'Arial'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.aiMenu.add(close);
+    const close = roundedPanel(this, 400, 565, 160, 36, 0x354b4b)
+      .setInteractive({ useHandCursor: true });
+    const closeLabel = this.add.text(400, 565, 'CLOSE', {
+      fontSize: '16px', color: '#edf1eb', fontFamily: 'Arial'
+    }).setOrigin(0.5);
+    close.on('pointerover', () => close.setFillStyle(0x456361));
+    close.on('pointerout', () => close.setFillStyle(0x354b4b));
+    this.aiMenu.add([close, closeLabel]);
     close.on('pointerdown', () => this.closeAIMenu());
   }
 
@@ -995,6 +1084,29 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     if (this.board.state === 'AI_MENU') {
       this.board.setState('IDLE');
     }
+  }
+
+  // =====================================
+  // AI-EVNE: FRIT BRIKBYT
+  // =====================================
+  useTileSwap() {
+    if (this.board.state !== 'AI_MENU' || this.aiUsesRemaining.tileSwap <= 0
+      || this.aiBoosters.selectedPower !== 'tileSwap'
+      || this.supervisorActive || this.battleWon || this.battleLost) return;
+    this.closeAIMenu();
+    this.statusText.setText('Drag a tile onto another tile. This uses your turn.');
+    const cancel = this.add.text(75, 675, 'CANCEL SWAP', {
+      fontFamily: 'Arial', fontSize: '12px', color: '#ffff88'
+    }).setOrigin(0.5).setDepth(40).setInteractive({ useHandCursor: true });
+    cancel.once('pointerdown', () => {
+      this.board.cancelManualSwap();
+      cancel.destroy();
+      this.statusText.setText('Your turn.');
+    });
+    this.board.beginManualSwap(() => {
+      cancel.destroy();
+      this.finishAIPowerUse(15);
+    });
   }
 
   // =====================================
@@ -1011,19 +1123,14 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     let bestMove = null;
     let bestScore = 0;
 
-    // Try each adjacent swap and restore it. Compare immediate matches, not random refills.
+    // Medregn kaskader fra eksisterende brikker uden at gætte nye brikker.
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
         for (const [otherRow, otherCol] of [[row, col + 1], [row + 1, col]]) {
           if (!grid.inBounds(otherRow, otherCol)) continue;
-          grid.swapCells(row, col, otherRow, otherCol);
-          const matches = grid.findMatches();
-          const valid = grid.matchesContainEitherCell(matches, row, col, otherRow, otherCol);
-          const cells = new Set(matches.flatMap(match =>
-            match.cells.map(cell => `${cell.row},${cell.col}`)));
-          grid.swapCells(row, col, otherRow, otherCol);
-          if (valid && cells.size > bestScore) {
-            bestScore = cells.size;
+          const score = grid.scoreSwapWithCascades(row, col, otherRow, otherCol);
+          if (score > bestScore) {
+            bestScore = score;
             bestMove = [{ row, col }, { row: otherRow, col: otherCol }];
           }
         }
@@ -1043,15 +1150,22 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         .setFillStyle(0xffffff, 0).setStrokeStyle(4, 0xffff00));
     }
 
-    this.finishAIPowerUse(15);
+    this.finishAIPowerUse(20);
     this.board.setState('AI_PREVIEW');
     this.statusText.setText('AI is playing a free move!');
     this.time.delayedCall(700, () => {
-      if (this.battleWon || this.battleLost) return;
-      this.freeAIMove = true;
-      this.board.setState('IDLE');
-      this.board.performSwap(bestMove[0].row, bestMove[0].col,
-        bestMove[1].row, bestMove[1].col);
+      const playMove = () => {
+        if (this.battleWon || this.battleLost) return;
+        this.freeAIMove = true;
+        this.board.setState('IDLE');
+        this.board.performSwap(bestMove[0].row, bestMove[0].col,
+          bestMove[1].row, bestMove[1].col);
+      };
+      if (this.supervisorDialogueActive) {
+        this.events.once('supervisor-dialogue-closed', playMove);
+      } else {
+        playMove();
+      }
     });
   }
 
@@ -1084,13 +1198,17 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
   finishAIPowerUse(suspicionCost) {
     this.aiPowerUsesRemaining--;
     this.aiUsesRemaining[this.aiBoosters.selectedPower] = this.aiPowerUsesRemaining;
-    this.aiBoosters.suspicion = Math.min(100, this.aiBoosters.suspicion + suspicionCost);
+    const previousSuspicion = this.aiBoosters.suspicion;
+    this.aiBoosters.suspicion = Math.min(100, previousSuspicion + suspicionCost);
+    this.campaignScore.suspicionGained += this.aiBoosters.suspicion - previousSuspicion;
     this.registry.set('aiBoosters', this.aiBoosters);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
     this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
     this.closeAIMenu();
     if (this.aiBoosters.suspicion >= 100) {
       this.startSupervisorIntervention();
+    } else {
+      this.updateSupervisorEye(this.aiBoosters.suspicion);
     }
   }
 
@@ -1101,19 +1219,69 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     if (this.supervisorActive || this.battleWon || this.battleLost) return;
 
     this.supervisorActive = true;
-    this.EnemyMaxHP += 50;
-    this.EnemyHP = this.EnemyMaxHP;
+    this.campaignScore.interventions++;
+    this.updateSupervisorEye(100);
+    this.supervisorEyeHolding = true;
+    this.hideAIPowerHint();
+    this.EnemyMaxHP += 25;
+    this.EnemyHP += (this.EnemyMaxHP - this.EnemyHP) * 0.25;
     this.updateEnemyHealthBar();
     this.aiButton.disableInteractive();
-    this.aiButtonText.setText('AI DISABLED');
+    this.aiButton.setAlpha(0.4);
 
-    const message = this.add.text(this.scale.width / 2, 80,
-      'SUPERVISOR\nWe have noticed a huge incline in your effectiveness and we would like to see you do it live.', {
-        fontSize: '16px', color: '#ffffff', backgroundColor: '#222222',
-        fontFamily: 'Arial', align: 'center', padding: { x: 12, y: 10 },
-        wordWrap: { width: 650 }
-      }).setOrigin(0.5).setDepth(55);
-    this.time.delayedCall(8000, () => message.destroy());
+    this.showSupervisorDialogue();
+  }
+
+  // =====================================
+  // SUPERVISORENS TALEBOBLE OG BEKRÆFTELSE
+  // =====================================
+  showSupervisorDialogue() {
+    this.supervisorDialogueActive = true;
+    this.board.resetPointerState();
+    const bubble = this.add.container(0, 0).setDepth(80);
+    const blocker = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.2)
+      .setInteractive();
+    const tail = this.add.graphics();
+    tail.fillStyle(0x1d272f, 1);
+    tail.fillTriangle(148, 420, 170, 406, 170, 434);
+    const panel = roundedPanel(this, 380, 470, 430, 300, 0x1d272f);
+    const text = this.add.text(185, 340, 'SUPERVISOR\n', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb',
+      wordWrap: { width: 385 }, lineSpacing: 4
+    });
+    const ok = roundedPanel(this, 380, 590, 74, 32, 0x354b4b).setVisible(false);
+    const okLabel = this.add.text(380, 590, 'OK', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb'
+    }).setOrigin(0.5).setVisible(false);
+    bubble.add([blocker, tail, panel, text, ok, okLabel]);
+    const message = 'We have noticed a huge incline in your effectiveness and we would like to see you do it live.'
+      + '\n\n(The enemy has gained 25 max HP and healed 25% of missing HP. AI powers are locked for this fight.)';
+    let characterCount = 0;
+    this.time.addEvent({
+      delay: 25, repeat: message.length - 1,
+      callback: () => {
+        characterCount++;
+        text.setText(`SUPERVISOR\n${message.slice(0, characterCount)}`);
+        if (characterCount === message.length) {
+          ok.setVisible(true).setInteractive({ useHandCursor: true });
+          okLabel.setVisible(true);
+        }
+      }
+    });
+    ok.on('pointerover', () => ok.setFillStyle(0x456361));
+    ok.on('pointerout', () => ok.setFillStyle(0x354b4b));
+    ok.once('pointerdown', () => {
+      bubble.destroy(true);
+      this.aiBoosters.suspicion = 50;
+      this.registry.set('aiBoosters', this.aiBoosters);
+      this.suspicionBar.displayWidth = 50;
+      this.suspicionText.setText('Suspicion: 50/100');
+      this.supervisorEyeHolding = false;
+      this.updateSupervisorEye(50);
+      this.board.resetPointerState();
+      this.supervisorDialogueActive = false;
+      this.events.emit('supervisor-dialogue-closed');
+    });
   }
 
   // =====================================
@@ -1127,6 +1295,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.registry.set('aiBoosters', this.aiBoosters);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
     this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
+    this.updateSupervisorEye(this.aiBoosters.suspicion, false);
   }
 
   // =====================================
@@ -1214,7 +1383,13 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.freeAIMove = false;
 
     if (!result.valid) {
+      const moraleBeforePenalty = this.PlayerHP;
       this.damagePlayer(5);
+      if (this.copyRoundAbility) {
+        this.playerRoundActions.push({
+          type: 'selfDamage', amount: moraleBeforePenalty - this.PlayerHP
+        });
+      }
       if (this.PlayerHP <= 0) {
         this.loseBattle();
         return;
@@ -1227,12 +1402,11 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       return;
     }
 
-    this.updateDeadlineRequirement(result, freeMove);
-
     if (freeMove) {
       this.freeMoveTilesMatched += result.totalMatched;
     } else {
       // Free AI matches contribute to the same response as the following normal move.
+      this.hideAIPowerHint();
       this.lastMoveTotalMatched = this.freeMoveTilesMatched + result.totalMatched;
       this.freeMoveTilesMatched = 0;
       this.board.clearInk();
@@ -1243,6 +1417,15 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         result
       );
 
+    // Kun skaden fra den forbudte briktype giver tilbageslag, ikke AI-bonussen.
+    const bannedTileDamage = this.board.bannedTileType == null ? 0 : damageResult.breakdown
+      .filter(match => match.tileValue === this.board.bannedTileType)
+      .reduce((total, match) => total + match.damage, 0);
+    if (!freeMove && this.board.bannedTileType != null) {
+      this.banRoundsRemaining--;
+      if (this.banRoundsRemaining <= 0) this.board.setBannedTile(null);
+    }
+
     if (freeMove) {
       damageResult.totalDamage += 3;
       damageResult.breakdown.push({
@@ -1252,6 +1435,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
     this.turnDamage =
       damageResult.totalDamage;
+    this.updateDeadlineRequirement(this.turnDamage, freeMove);
     if (this.copyRoundAbility) {
       this.playerRoundActions.push({ type: 'damage', amount: this.turnDamage });
     }
@@ -1261,21 +1445,42 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
     this.renderDamage();
 
+    
     // =====================================
     // BOBS ANGREB
     // =====================================
 
     this.playPlayerAttackAnimation();
 
+    // Registrer damage til campaign score
+    this.campaignScore.damage += this.turnDamage;
+
+    // Enemy tager skade
     this.damageEnemy(this.turnDamage);
 
+    // Afspil hit-lyd
     if (
-        this.turnDamage > 0 &&
-        this.cache.audio.exists('hitSound')
+      this.turnDamage > 0 &&
+      this.cache.audio.exists('hitSound')
     ) {
-        this.sound.play('hitSound', {
-            volume: 0.8
-        });
+      this.sound.play('hitSound', {
+        volume: 0.8
+      });
+    }
+
+    // Enemy takes damage
+    // Tæl hele angrebet før HP begrænses, så overkill også giver point.
+    this.campaignScore.damage += this.turnDamage;
+    this.damageEnemy(
+      this.turnDamage
+    );
+
+    if (bannedTileDamage > 0) {
+      this.damagePlayer(bannedTileDamage * 0.5);
+      if (this.PlayerHP <= 0) {
+        this.loseBattle();
+        return;
+      }
     }
 
     if (this.EnemyHP <= 0) {
@@ -1286,17 +1491,6 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
     if (!result.hasValidMoves) {
       return;
-    }
-
-    // Prefer the strongest reaction when a move qualifies for several events.
-    if (result.chains > 1) {
-      this.showEnemyDialogue('combo');
-    } else if (this.turnDamage >= 15) {
-      this.showEnemyDialogue('greatMove');
-    } else if (this.turnDamage >= 12) {
-      this.showEnemyDialogue('goodMove');
-    } else {
-      this.showEnemyDialogue('normalMove');
     }
 
     // A free AI swap deals damage, then returns input without an enemy turn.
@@ -1363,21 +1557,20 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
   }
 
   // =====================================
-  // DEADLINE DEMONS STIGENDE MATCHKRAV
+  // DEADLINE DEMONS STIGENDE SKADEKRAV
   // =====================================
-  updateDeadlineRequirement(result, freeMove) {
-    if (!this.deadlineAbility || freeMove) return;
+  updateDeadlineRequirement(damage, freeMove) {
+    if (!this.deadlineAbility) return;
+    this.deadlineRoundDamage += damage;
+    if (freeMove) return;
 
-    const initialMatches = this.mergeConnectedMatches(result.matches[0].matches);
-    const initialSize = Math.max(...initialMatches.map(match => match.cells.length));
-    // Hver kaskadebølge giver ét point, uanset antallet af brikker i bølgen.
-    const matchScore = initialSize + Math.max(0, result.chains - 1);
-    if (matchScore < this.deadlineRequirement) {
+    if (this.deadlineRoundDamage < this.deadlineRequirement) {
       this.deadlineDamageBonus++;
     }
+    this.deadlineRoundDamage = 0;
     this.deadlineMoveCount++;
     this.deadlineRequirement = this.deadlineAbility.startingRequirement
-      + Math.floor((this.deadlineMoveCount + 1) / this.deadlineAbility.movesPerIncrease);
+      + this.deadlineMoveCount * this.deadlineAbility.damagePerRound;
   }
 
   // =====================================
@@ -1435,6 +1628,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         totalDamage += damage;
 
         breakdown.push({
+          tileValue: match.tileValue,
           chain:
             chainData.chain,
 
@@ -1825,7 +2019,10 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.playerRoundActions = [];
     this.enemyTurnDamage = 0;
 
-    if (this.enemyAbility?.type === 'doubleAttack') {
+    const banAbility = abilities.find(ability => ability.type === 'banTiles');
+    if (banAbility && (this.enemyAttackCount + 1) % banAbility.everyTurns === 0) {
+      this.showEnemyDialogue('ban');
+    } else if (this.enemyAbility?.type === 'doubleAttack') {
       // Reaching the threshold sooner locks in lower damage for the rest of the fight.
       if (this.enemyAbility.stopDamageScaling) {
         this.fixedEnemyDamage = normalDamage;
@@ -1836,10 +2033,6 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       this.statusText.setText(`${this.enemyConfig.name}: DOUBLE ATTACK!`);
     } else if (this.enemyAbility?.type === 'copyRound') {
       this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
-    } else if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3
-      && this.enemyConfig.dialogue?.enemyLowHP?.length) {
-      this.enemyLowHPShown = true;
-      this.showEnemyDialogue('enemyLowHP');
     } else {
       this.showEnemyDialogue('enemyAction');
     }
@@ -1862,9 +2055,15 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     }
 
     const index = Math.floor(Math.random() * lines.length);
+    if (event === 'ban') {
+      this.board.setBannedTile(index);
+      this.banRoundsRemaining = 2;
+    }
     let message = lines[index];
-    if (this.deadlineAbility && (event === 'intro' || event === 'enemyAction')) {
-      message += `\nThe scope is now ${this.deadlineRequirement}.`;
+    if (this.deadlineAbility && event === 'enemyAction'
+      && this.deadlineRequirement > this.announcedDeadlineRequirement) {
+      message += `\nThe scope has grown to ${this.deadlineRequirement} damage.`;
+      this.announcedDeadlineRequirement = this.deadlineRequirement;
     }
     this.showEnemySpeechBubble(message);
     this.enemyDialogueTimer = this.time.delayedCall(5000, () => {
@@ -2058,7 +2257,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
       this.enemyBaseY;
 
     const nextAction = this.enemyActions[0];
-    if (nextAction?.type === 'heal') {
+    if (nextAction?.type === 'heal' || nextAction?.type === 'selfDamage') {
       this.enemy.play(this.enemyConfig.animations.idle.key);
       this.time.delayedCall(1200, () => this.finishEnemyAttack());
       return;
@@ -2125,7 +2324,13 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.enemyTurnDamage += damage;
 
     const healedMorale = damage < 0 ? Math.min(-damage, this.PlayerMaxHP - this.PlayerHP) : 0;
-    if (action.type === 'heal') {
+    if (action.type === 'selfDamage') {
+      this.damageEnemy(action.amount);
+      if (this.EnemyHP <= 0) {
+        this.winBattle();
+        return;
+      }
+    } else if (action.type === 'heal') {
       this.EnemyHP = Math.min(this.EnemyMaxHP, this.EnemyHP + action.amount);
       this.updateEnemyHealthBar();
       this.statusText.setText(`${this.enemyConfig.name} copies your healing!`);
@@ -2378,6 +2583,9 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         this.enemy.once(
           `animationcomplete-${this.enemyConfig.animations.death.key}`,
           () => {
+            if (this.enemyConfig.hideAfterDeath) {
+              this.enemy.setVisible(false);
+            }
             this.showGameWon();
             if (this.enemyConfig.defeatClickMorale) {
               this.showBobSpeechBubble('I should clean up after myself');
@@ -2385,6 +2593,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
               this.enemy.setInteractive();
               this.enemy.once('pointerdown', () => {
                 if (this.resultTransitionActive) return;
+                this.campaignScore.boxFound = true;
                 this.enemy.disableInteractive();
                 this.enemy.playReverse(this.enemyConfig.animations.spawn.key);
                 const healedMorale = Math.min(this.enemyConfig.defeatClickMorale,
@@ -2686,6 +2895,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     }
 
     this.battleWon = true;
+    this.hideAIPowerHint();
     this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
@@ -2735,6 +2945,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     }
 
     this.battleLost = true;
+    this.hideAIPowerHint();
     this.recoverSuspicionAfterFight();
 
     this.enemyTurnActive = false;
@@ -2846,6 +3057,10 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         .setDepth(20);
 
     this.addResultButton(boardCenterX, boardCenterY + 75, 'TRY AGAIN', () => {
+      this.registry.set('campaignScore', {
+        ...this.startingCampaignScore,
+        retries: (this.startingCampaignScore.retries ?? 0) + 1
+      });
       this.registry.set('aiBoosters', { ...this.startingAIBoosters });
       this.scene.restart({
         encounterId: this.encounterId,

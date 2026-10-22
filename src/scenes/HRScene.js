@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import roundedPanel from '../ui/roundedPanel.js';
 
 export default class HRScene extends Phaser.Scene {
   constructor() {
@@ -17,12 +18,12 @@ export default class HRScene extends Phaser.Scene {
   // =====================================
   preload() {
     this.load.image('hrOfficeStart',
-      new URL('../../assets/backgrounds/HRofficeStatic1.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRofficeStatic1.png');
     this.load.spritesheet('hrOfficeAnimation',
-      new URL('../../assets/backgrounds/HRoffice.png', import.meta.url).href,
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRoffice.png',
       { frameWidth: 120, frameHeight: 100 });
     this.load.image('hrOfficeEnd',
-      new URL('../../assets/backgrounds/HRofficeStatic2.png', import.meta.url).href);
+      import.meta.env.BASE_URL + 'assets/backgrounds/HRofficeStatic2.png');
   }
 
   // =====================================
@@ -31,6 +32,25 @@ export default class HRScene extends Phaser.Scene {
   create() {
     const room = this.add.sprite(this.scale.width / 2, this.scale.height / 2, 'hrOfficeStart');
     room.setScale(Math.min(this.scale.width / 120, this.scale.height / 100));
+
+    // =====================================
+    // OVERBLIK OVER MORALE OG MISTANKE
+    // =====================================
+    this.add.rectangle(12, 12, 210, 108, 0x222222, 0.95).setOrigin(0).setDepth(10);
+    this.moraleText = this.add.text(24, 22, '', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+    }).setDepth(11);
+    this.add.rectangle(24, 47, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+    this.moraleBar = this.add.rectangle(24, 47, 180, 12, 0x55cc77)
+      .setOrigin(0, 0.5).setDepth(11);
+
+    this.suspicionText = this.add.text(24, 68, '', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+    }).setDepth(11);
+    this.add.rectangle(24, 97, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+    this.suspicionBar = this.add.rectangle(24, 97, 180, 12, 0xffaa33)
+      .setOrigin(0, 0.5).setDepth(11);
+    this.updateOverview();
 
     if (!this.anims.exists('hr-office-intro')) {
       this.anims.create({
@@ -53,19 +73,54 @@ export default class HRScene extends Phaser.Scene {
   }
 
   // =====================================
+  // OPDATERING AF MÅLERNE
+  // =====================================
+  updateOverview() {
+    const morale = this.progression.playerMorale;
+    const maxMorale = this.progression.playerMaxMorale;
+    const suspicion = this.registry.get('aiBoosters')?.suspicion ?? 0;
+    this.moraleText.setText(`MORALE: ${morale} / ${maxMorale}`);
+    this.moraleBar.displayWidth = 180 * Phaser.Math.Clamp(morale / maxMorale, 0, 1);
+    this.suspicionText.setText(`SUSPICION: ${suspicion} / 100`);
+    this.suspicionBar.displayWidth = 180 * Phaser.Math.Clamp(suspicion / 100, 0, 1);
+  }
+
+  // =====================================
   // SAMTALE MED HR
   // =====================================
   showConversation() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const secondVisit = this.progression.completedEncounterId === 'cardboardMimic';
-    const dialogue = this.add.text(width / 2, height - 260, 'HR\n', {
-        fontFamily: 'Arial', fontSize: '18px', color: '#ffffff',
-        backgroundColor: '#222222', padding: { x: 16, y: 12 },
-        align: 'center', wordWrap: { width: 660 }
+    const thirdVisit = this.progression.completedEncounterId === 'necromanager';
+    const secondVisit = this.progression.completedEncounterId === 'cardboardMimic' || thirdVisit;
+    const dialoguePanel = roundedPanel(this, width / 2, height - 295, 744, 174, 0x1d272f);
+    const dialogue = this.add.text(width / 2, height - 295, 'HR\n', {
+        fontFamily: 'Arial', fontSize: '18px', color: '#edf1eb',
+        lineSpacing: 3,
+        align: 'center', wordWrap: { width: 690 }
       }).setOrigin(0.5);
 
-    const choices = secondVisit ? [
+    const updateDialogue = text => {
+      dialogue.setText(text);
+      const panelHeight = dialogue.height + 32;
+      const panelY = height - 210 - panelHeight / 2;
+      dialoguePanel.setPanelSize(744, panelHeight).setY(panelY);
+      dialogue.setY(panelY);
+    };
+
+    const choices = thirdVisit ? [
+      {
+        text: '(Talk it out +25 Morale) Me? Is it bad?? What did I do?',
+        reply: 'I can\'t really say. Go see him - but I\'m sure you\'ll be fine.',
+        moraleBoost: 25
+      },
+      {
+        text: 'Meh, I\'ll do it after lunch (Go to lunch)',
+        reply: 'Hah! I also stress eat - my wife hates it...',
+        leave: true,
+        goToLunch: true
+      }
+    ] : secondVisit ? [
       {
         text: 'I feel like this work environment is a bit... hostile? (+40 Morale)',
         reply: 'WhHaaAt? Impossible. I will talk to someone about this, at some point. '
@@ -73,7 +128,7 @@ export default class HRScene extends Phaser.Scene {
         moraleBoost: 40
       },
       {
-        text: 'Go to lunch instead',
+        text: 'Go to lunch instead (choose another power)',
         reply: 'Of course. Nothing resolves workplace concerns like a sandwich.',
         leave: true,
         goToLunch: true
@@ -94,18 +149,38 @@ export default class HRScene extends Phaser.Scene {
     ];
     const choiceButtons = [];
     let speaking = false;
+    const showContinue = (onContinue, caption = 'CONTINUE', y = height - 115) => {
+      const button = roundedPanel(this, width / 2, y,
+        thirdVisit ? 720 : 240, 50, 0x354b4b)
+        .setInteractive({ useHandCursor: true });
+      button.on('pointerover', () => button.setFillStyle(0x456361));
+      button.on('pointerout', () => button.setFillStyle(0x354b4b));
+      const label = this.add.text(width / 2, y, caption, {
+        fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
+      }).setOrigin(0.5);
+      button.once('pointerdown', () => {
+        button.disableInteractive();
+        button.destroy();
+        label.destroy();
+        onContinue();
+      });
+    };
     const leaveHR = (goToLunch = false) => {
       if (goToLunch) {
         this.scene.start('LunchScene', this.progression);
       } else if (secondVisit) {
         this.scene.start('MainScene', {
-          encounterId: 'deadlineDemon',
+          encounterId: thirdVisit ? 'ceoOverlord' : 'deadlineDemon',
           encounterIndex: this.progression.nextEncounterIndex,
           playerMorale: this.progression.playerMorale,
           playerMaxMorale: this.progression.playerMaxMorale
         });
       } else {
-        this.scene.start('ProgressionScene', { ...this.progression, hrVisited: true });
+        speak('Remember to enjoy our free fruits.', () => {
+          showContinue(() => {
+            this.scene.start('ProgressionScene', { ...this.progression, hrVisited: true });
+          });
+        });
       }
     };
 
@@ -113,12 +188,12 @@ export default class HRScene extends Phaser.Scene {
     const updateChoices = enabled => {
       for (const { button, label, choice } of choiceButtons) {
         button.disableInteractive();
-        button.setFillStyle(0x222222);
-        label.setColor('#888888');
+        button.setFillStyle(0x202930);
+        label.setColor('#879399');
         if (enabled && !choice.used) {
           button.setInteractive({ useHandCursor: true });
-          button.setFillStyle(0x333333);
-          label.setColor('#ffffff');
+          button.setFillStyle(0x29343d);
+          label.setColor('#edf1eb');
         }
       }
     };
@@ -126,14 +201,14 @@ export default class HRScene extends Phaser.Scene {
     const speak = (message, onComplete) => {
       speaking = true;
       updateChoices(false);
-      dialogue.setText('HR\n');
+      updateDialogue('HR\n');
       let characterCount = 0;
       this.time.addEvent({
         delay: 25,
         repeat: message.length - 1,
         callback: () => {
           characterCount++;
-          dialogue.setText(`HR\n${message.slice(0, characterCount)}`);
+          updateDialogue(`HR\n${message.slice(0, characterCount)}`);
           if (characterCount === message.length) {
             speaking = false;
             onComplete();
@@ -145,8 +220,7 @@ export default class HRScene extends Phaser.Scene {
     for (let index = 0; index < choices.length; index++) {
       const choice = choices[index];
       const y = height - 175 + index * 60;
-      const button = this.add.rectangle(width / 2, y, 720, 50, 0x333333)
-        .setStrokeStyle(2, 0xffffff)
+      const button = roundedPanel(this, width / 2, y, 720, 50)
         .setVisible(false);
       const label = this.add.text(width / 2, y, choice.text, {
         fontFamily: 'Arial', fontSize: '16px', color: '#ffffff',
@@ -154,8 +228,8 @@ export default class HRScene extends Phaser.Scene {
       }).setOrigin(0.5).setVisible(false);
       choiceButtons.push({ button, label, choice });
 
-      button.on('pointerover', () => button.setFillStyle(0x555555));
-      button.on('pointerout', () => button.setFillStyle(speaking || choice.used ? 0x222222 : 0x333333));
+      button.on('pointerover', () => button.setFillStyle(0x3b5057));
+      button.on('pointerout', () => button.setFillStyle(speaking || choice.used ? 0x202930 : 0x29343d));
       button.on('pointerdown', () => {
         if (speaking || choice.used) return;
         choice.used = true;
@@ -169,24 +243,28 @@ export default class HRScene extends Phaser.Scene {
 
         speak(choice.reply, () => {
           if (choice.leave) {
-            // Lad spilleren nå at læse afskeden, inden scenen skifter.
-            this.time.delayedCall(1500, () => leaveHR(choice.goToLunch));
+            if (thirdVisit) {
+              showContinue(() => leaveHR(true));
+            } else if (!secondVisit) {
+              showContinue(() => leaveHR());
+            } else {
+              // Lad spilleren nå at læse afskeden, inden scenen skifter.
+              this.time.delayedCall(1500, () => leaveHR(choice.goToLunch));
+            }
           } else if (choice.moraleBoost) {
             const healedMorale = Math.min(choice.moraleBoost,
               this.progression.playerMaxMorale - this.progression.playerMorale);
             this.progression.playerMorale += healedMorale;
-            dialogue.setText(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
+            this.updateOverview();
+            updateDialogue(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
 
-            const continueButton = this.add.rectangle(width / 2, height - 115,
-              240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
-              .setInteractive({ useHandCursor: true });
-            this.add.text(width / 2, height - 115, 'CONTINUE', {
-              fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
-            }).setOrigin(0.5);
-            continueButton.once('pointerdown', () => {
-              continueButton.disableInteractive();
-              leaveHR();
-            });
+            if (thirdVisit) {
+              showContinue(() => leaveHR(), 'Go see the CEO', height - 175);
+              showContinue(() => this.scene.start('MainMenuScene'),
+                'I CANT DO THIS ANYMORE! (Go to main menu)', height - 115);
+            } else {
+              showContinue(() => leaveHR());
+            }
           } else {
             updateChoices(true);
           }
@@ -194,7 +272,9 @@ export default class HRScene extends Phaser.Scene {
       });
     }
 
-    const greeting = secondVisit
+    const greeting = thirdVisit
+      ? 'Here we are again, huh? So, I spoke to the higher-ups and, uhm... the boss wants to see you.'
+      : secondVisit
       ? 'Good to see you again. Just know that this meeting will make you miss lunch.'
       : 'Ah, the new hire! Nice to meet you. What can I do for you?';
     speak(greeting, () => {

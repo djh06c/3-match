@@ -62,12 +62,7 @@ const enemies = {
     dialogue: {
       intro: ['So... tell me a little about yourself.'],
       badMove: ['Interesting strategy.', 'Are you nervous?'],
-      normalMove: ['Okay.', 'Noted.', "We will circle back to that."],
-      goodMove: ['You came prepared.', 'That looks good on your CV.'],
-      greatMove: ['Please stop exceeding expectations.'],
-      combo: ['Multitasking. Management will love you.'],
       playerLowMorale: ['Are you good under pressure?'],
-      enemyLowHP: ['One final question. Why should we hire you?'],
       unexpectedFollowUp: ['One more thing. This role combines three full-time positions.'],
       enemyAction: [
         'Where do you see yourself in 45 years?',
@@ -122,10 +117,10 @@ const enemies = {
       hit: 'MimicIdle', death: 'MimicDeath', spawn: 'MimicOpening'
     },
     assets: [
-      { key: 'MimicIdle', path: new URL('../../assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicOpening', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicAttack', path: new URL('../../assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'MimicDeath', path: new URL('../../assets/mobs/CardboardMimic/MimicDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'MimicIdle', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/cardboard_mimic_IDLE.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicOpening', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/Cardboard Mimic - Opening Animation.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicAttack', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/Cardboard Mimic - Barrage attack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'MimicDeath', path: import.meta.env.BASE_URL + 'assets/mobs/CardboardMimic/MimicDeath.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'mimic-idle', start: 0, end: 0, frameRate: 1, repeat: -1 },
@@ -137,14 +132,8 @@ const enemies = {
     dialogue: {
       intro: ['Special delivery. Please sign with your remaining morale.'],
       badMove: ['Return to sender.'],
-      normalMove: ['Contents may have shifted.'],
-      goodMove: ['Handle with care!'],
-      greatMove: ['That was not covered by shipping insurance.'],
-      combo: ['One package at a time, please!'],
       playerLowMorale: ['You look ready to be boxed up.'],
-      enemyLowHP: ['Some assembly required.'],
-      enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.'],
-      defeat: ['Package successfully delivered.']
+      enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.']
     }
   },
   // =====================================
@@ -164,10 +153,10 @@ const enemies = {
     abilities: [
       {
         id: 'risingExpectations',
-        type: 'growingMatchRequirement',
-        startingRequirement: 3,
-        movesPerIncrease: 3,
-        description: 'Deadline Demon deals 5 damage. Moves 1-2 require a 3-match, moves 3-5 require a 4-match, moves 6-8 require a 5-match, and so on. Your largest initial match counts, plus 1 per cascade wave, regardless of its tile count. Missing the target permanently adds 1 damage to his attacks. Only valid normal moves advance the requirement.'
+        type: 'growingDamageRequirement',
+        startingRequirement: 8,
+        damagePerRound: 1,
+        description: 'Deal at least 8 damage on your first round. The required damage increases by 1 each round: 8, 9, 10, and so on. Each time you deal less than required, his attack damage permanently increases by 1. Cascades, AI bonus damage and free AI moves count toward your round\'s damage.'
       }
     ],
     introReadTime: 3500,
@@ -182,10 +171,10 @@ const enemies = {
       hit: 'DeadlineDemonHit', death: 'DeadlineDemonDeath'
     },
     assets: [
-      { key: 'DeadlineDemonIdle', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonAttack', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonAttack.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonHit', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'DeadlineDemonDeath', path: new URL('../../assets/mobs/DeadlineDemon/DeadlineDemonDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'DeadlineDemonIdle', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonIdle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonAttack', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonAttack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonHit', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonTakeDMG.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'DeadlineDemonDeath', path: import.meta.env.BASE_URL + 'assets/mobs/DeadlineDemon/DeadlineDemonDeath.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'deadline-demon-idle', start: 0, end: 3, frameRate: 4, repeat: -1 },
@@ -202,6 +191,56 @@ const enemies = {
         'I have extended the scope. The deadline stays.',
         'Consider this your final reminder. Again.',
         'We needed this yesterday. I can make that official.'
+      ]
+    }
+  },
+  // =====================================
+  // CEOVERLORD
+  // =====================================
+  ceoOverlord: {
+    id: 'ceoOverlord',
+    name: 'CEO-VERLORD',
+    abilities: [{ type: 'banTiles', everyTurns: 3,
+      description: 'At the start of the fight and every third round, CEO-VERLORD bans a random tile type for your next two rounds. Free AI moves do not shorten the ban. Grey tiles can still be moved and matched, but you lose Morale equal to 50% of the damage dealt by that tile type, including cascades.' }],
+    hideAfterDeath: true,
+    maxHP: 100,
+    baseDamage: 5,
+    damageIncrease: 0,
+    scale: 3,
+    hitDuration: 1000,
+    victoryText: 'CEO DEFEATED!',
+    textures: {
+      idle: 'CEOIdle', spawn: 'CEOOpening',
+      attack: 'CEOAttack', hit: 'CEOIdle', death: 'CEODeath'
+    },
+    assets: [
+      { key: 'CEOIdle', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - IDLE.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEOOpening', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - Opening.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEOAttack', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - attack.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'CEODeath', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - Death.png', frameWidth: 64, frameHeight: 64 }
+    ],
+    animations: {
+      idle: { key: 'ceo-idle', start: 0, end: 5, frameRate: 8, repeat: -1 },
+      hit: { key: 'ceo-hit', start: 0, end: 5, frameRate: 8, repeat: -1 },
+      spawn: { key: 'ceo-opening', start: 0, end: 20, frameRate: 10, repeat: 0 },
+      attack: { key: 'ceo-attack', start: 0, end: 23, frameRate: 10, repeat: 0 },
+      death: { key: 'ceo-death', start: 0, end: 15, frameRate: 10, repeat: 0, reverse: true }
+    },
+    dialogue: {
+      ban: [
+        'No more coffee breaks!',
+        'No emailing your friends when at work!',
+        'Don\'t use your laptop unproductively!',
+        'Are you taking notes or doodling?',
+        'Stop using your phone on company time!',
+        'Time at work doesn\'t go faster by looking at the clock!'
+      ],
+      enemyAction: [
+        'I won\'t burn the next one.',
+        'I can make these papers permanent.',
+        'Do you really want one of these on your desk?',
+        'Consider this a draft of your future.',
+        'The next copy goes straight to HR.'
       ]
     }
   },
@@ -227,20 +266,22 @@ const enemies = {
     ],
     textures: {
       idle: 'NecromanagerIdle', attack: 'NecromanagerThrow',
-      hit: 'NecromanagerIdle', death: 'NecromanagerIdle',
+      hit: 'NecromanagerIdle', death: 'NecromanagerDeath',
       summon: 'NecromanagerSummon', summoned: 'NecromanagerSummoned'
     },
     assets: [
-      { key: 'NecromanagerIdle', path: new URL('../../assets/mobs/Necromanager/Necromanager - Idle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerThrow', path: new URL('../../assets/mobs/Necromanager/Necromanager - Throw.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerSummon', path: new URL('../../assets/mobs/Necromanager/Necromanager - Summon.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'NecromanagerSummoned', path: new URL('../../assets/mobs/Necromanager/Thesummoned.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 }
+      { key: 'NecromanagerIdle', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Idle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerThrow', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Throw.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummon', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Summon.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerSummoned', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Thesummoned.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'NecromanagerDeath', path: import.meta.env.BASE_URL + 'assets/mobs/Necromanager/Necromanager - Death.png', frameWidth: 64, frameHeight: 64 }
     ],
     animations: {
       idle: { key: 'necromanager-idle', start: 0, end: 6, frameRate: 8, repeat: -1 },
       attack: { key: 'necromanager-throw', start: 0, end: 9, frameRate: 10, repeat: 0 },
       summon: { key: 'necromanager-summon', start: 0, end: 12, frameRate: 10, repeat: 0 },
-      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0 }
+      summoned: { key: 'necromanager-summoned', start: 0, end: 19, frameRate: 10, repeat: 0, holdFrame: 11, extraFrames: 4 },
+      death: { key: 'necromanager-death', start: 0, end: 7, frameRate: 10, repeat: 0 }
     },
     dialogue: {
       enemyAction: [
@@ -315,11 +356,11 @@ const enemies = {
       spawn: 'PrinterSpawn'
     },
     assets: [
-      { key: 'PrinterSpawn', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusSpawn.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterIdle', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusIdle.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterAttack', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDealDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterDeath', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusDeath.png', import.meta.url).href, frameWidth: 64, frameHeight: 64 },
-      { key: 'PrinterTakeDMG', path: new URL('../../assets/mobs/Printosaurus/PrintosaurusTakeDMG.png', import.meta.url).href, frameWidth: 64, frameHeight: 64},
+      { key: 'PrinterSpawn', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusSpawn.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterIdle', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusIdle.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterAttack', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusDealDMG.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterDeath', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusDeath.png', frameWidth: 64, frameHeight: 64 },
+      { key: 'PrinterTakeDMG', path: import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/PrintosaurusTakeDMG.png', frameWidth: 64, frameHeight: 64},
     ], 
     animations: {
       idle: { key: 'printer-idle', start: 0, end: 1, frameRate: 2, repeat: -1 },
@@ -331,12 +372,7 @@ const enemies = {
     dialogue: {
       intro: ['PC LOAD LETTER. Good luck with that.'],
       badMove: ['Paper jam. Try again.'],
-      normalMove: ['Processing...'],
-      goodMove: ['Unexpected productivity detected.'],
-      greatMove: ['Please contact IT.'],
-      combo: ['Too many jobs in the print queue!'],
       playerLowMorale: ['Low toner. Lower morale.'],
-      enemyLowHP: ['Have you tried turning me off and on?'],
       enemyAction: ['Out of paper.', 'Your document is stuck in the queue.'],
       defeat: ['Your document has finally printed.']
     }

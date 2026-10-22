@@ -27,14 +27,42 @@ export default class ProgressionScene extends Phaser.Scene {
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
-    const isBreak = ['joblin', 'cardboardMimic'].includes(this.progression.completedEncounterId);
+    const campaignComplete = this.progression.completedEncounterId === 'ceoOverlord';
+    const isBreak = ['joblin', 'cardboardMimic', 'necromanager'].includes(this.progression.completedEncounterId);
     const nextEncounters = {
       printosaurus: 'cardboardMimic',
       deadlineDemon: 'necromanager'
     };
     const nextEncounterId = nextEncounters[this.progression.completedEncounterId];
 
-    this.add.text(width / 2, height / 2 - 140, isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
+    if (campaignComplete) {
+      const score = this.registry.get('campaignScore')
+        ?? { damage: 0, suspicionGained: 0, interventions: 0 };
+      const suspicionPenalty = score.suspicionGained * 3;
+      const interventionPenalty = score.interventions * 40;
+      const retries = score.retries ?? 0;
+      const retryPenalty = retries * 10;
+      const easterEggsFound = Number(Boolean(score.fruitFound)) + Number(Boolean(score.boxFound));
+      const easterEggBonus = easterEggsFound * 10;
+      const remainingMoraleBonus = this.progression.playerMorale;
+      const finalScore = score.damage - suspicionPenalty - interventionPenalty - retryPenalty
+        + easterEggBonus + remainingMoraleBonus;
+      this.add.text(width / 2, height / 2 - 50, `FINAL SCORE: ${finalScore}`, {
+        fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffff88'
+      }).setOrigin(0.5);
+      this.add.text(width / 2, height / 2 + 35,
+        `Damage dealt: +${score.damage}\nSuspicion gained: ${score.suspicionGained} (-${suspicionPenalty})`
+        + `\nSupervisor interventions: ${score.interventions} (-${interventionPenalty})`
+        + `\nRetries: ${retries} (-${retryPenalty})`
+        + `\nEaster eggs interacted with: ${easterEggsFound}/2 (+${easterEggBonus})`
+        + `\nRemaining Morale: +${remainingMoraleBonus}`, {
+          fontFamily: 'Arial', fontSize: '18px', color: '#edf1eb',
+          align: 'center', lineSpacing: 10
+        }).setOrigin(0.5);
+    }
+
+    this.add.text(width / 2, height / 2 - 140,
+      campaignComplete ? 'Thank you for playing' : isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
       fontSize: '30px',
       color: '#ffffff',
       fontFamily: 'Arial',
@@ -42,19 +70,42 @@ export default class ProgressionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    this.add.text(width / 2, height / 2 - 85,
+    if (!campaignComplete && !isBreak) {
+      this.add.text(width / 2, height / 2 - 85,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
         fontSize: '20px',
         color: '#ffff88',
         fontFamily: 'Arial'
       }).setOrigin(0.5);
+    }
 
     // =====================================
-    // PAUSE EFTER JOBLIN OG PAPKASSEMIMIK
+    // PAUSE EFTER JOBLIN, PAPKASSEMIMIK OG NECROMANAGER
     // =====================================
     if (isBreak) {
+      // Samme overblik som i HR, inden spilleren vælger sin pause.
+      const morale = this.progression.playerMorale;
+      const maxMorale = this.progression.playerMaxMorale;
+      const suspicion = this.registry.get('aiBoosters')?.suspicion ?? 0;
+      this.add.rectangle(12, 12, 210, 108, 0x222222, 0.95).setOrigin(0).setDepth(10);
+      this.add.text(24, 22, `MORALE: ${morale} / ${maxMorale}`, {
+        fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+      }).setDepth(11);
+      this.add.rectangle(24, 47, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+      const moraleBar = this.add.rectangle(24, 47, 180, 12, 0x55cc77)
+        .setOrigin(0, 0.5).setDepth(11);
+      moraleBar.displayWidth = 180 * Phaser.Math.Clamp(morale / maxMorale, 0, 1);
+
+      this.add.text(24, 68, `SUSPICION: ${suspicion} / 100`, {
+        fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+      }).setDepth(11);
+      this.add.rectangle(24, 97, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+      const suspicionBar = this.add.rectangle(24, 97, 180, 12, 0xffaa33)
+        .setOrigin(0, 0.5).setDepth(11);
+      suspicionBar.displayWidth = 180 * Phaser.Math.Clamp(suspicion / 100, 0, 1);
+
       this.add.text(width / 2, height / 2 - 30,
-        'Where would you like to go?', {
+        'Choose one', {
           fontSize: '18px',
           color: '#ffffff',
           fontFamily: 'Arial',
@@ -68,11 +119,12 @@ export default class ProgressionScene extends Phaser.Scene {
         .setStrokeStyle(3, 0xffffff)
         .setInteractive({ useHandCursor: true });
 
-      this.add.text(width / 2 - 140, height / 2 + 40, 'LUNCH BREAK', {
-        fontSize: '22px',
+      this.add.text(width / 2 - 140, height / 2 + 40, 'LUNCH BREAK\n(Choose power)', {
+        fontSize: '18px',
         color: '#ffffff',
         fontFamily: 'Arial',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        align: 'center'
       }).setOrigin(0.5);
 
       lunchButton.on('pointerover', () => lunchButton.setFillStyle(0x777777));
@@ -86,7 +138,7 @@ export default class ProgressionScene extends Phaser.Scene {
         .setStrokeStyle(3, 0xffffff)
         .setInteractive({ useHandCursor: true });
 
-      this.add.text(width / 2 + 140, height / 2 + 40, this.progression.hrVisited ? 'HR\nVISITED' : 'HR', {
+      this.add.text(width / 2 + 140, height / 2 + 40, this.progression.hrVisited ? 'HR\nVISITED' : 'HR\n(Morale boost)', {
         fontSize: '18px',
         color: '#ffffff',
         fontFamily: 'Arial',
@@ -129,7 +181,7 @@ export default class ProgressionScene extends Phaser.Scene {
           playerMaxMorale: this.progression.playerMaxMorale
         });
       });
-    } else {
+    } else if (!campaignComplete) {
       this.add.text(width / 2, height / 2 + 20,
         'You completed the current campaign section.\nMore workplace challenges are coming soon.', {
           fontSize: '18px', color: '#ffffff', fontFamily: 'Arial', align: 'center'

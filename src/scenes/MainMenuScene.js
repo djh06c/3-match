@@ -106,6 +106,9 @@ export default class MainMenuScene extends Phaser.Scene {
 
     // Start spillet
     button.on('pointerdown', () => {
+      this.registry.set('campaignScore', {
+        damage: 0, suspicionGained: 0, interventions: 0, retries: 0, fruitFound: false, boxFound: false
+      });
       this.registry.set('aiBoosters', {
         unlocked: false,
         selectedPower: null,
