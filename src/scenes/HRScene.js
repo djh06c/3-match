@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import roundedPanel from '../ui/roundedPanel.js';
 
 export default class HRScene extends Phaser.Scene {
   constructor() {
@@ -92,11 +93,20 @@ export default class HRScene extends Phaser.Scene {
     const height = this.scale.height;
     const thirdVisit = this.progression.completedEncounterId === 'necromanager';
     const secondVisit = this.progression.completedEncounterId === 'cardboardMimic' || thirdVisit;
-    const dialogue = this.add.text(width / 2, height - 260, 'HR\n', {
-        fontFamily: 'Arial', fontSize: '18px', color: '#ffffff',
-        backgroundColor: '#222222', padding: { x: 16, y: 12 },
-        align: 'center', wordWrap: { width: 660 }
+    const dialoguePanel = roundedPanel(this, width / 2, height - 295, 744, 174, 0x1d272f);
+    const dialogue = this.add.text(width / 2, height - 295, 'HR\n', {
+        fontFamily: 'Arial', fontSize: '18px', color: '#edf1eb',
+        lineSpacing: 3,
+        align: 'center', wordWrap: { width: 690 }
       }).setOrigin(0.5);
+
+    const updateDialogue = text => {
+      dialogue.setText(text);
+      const panelHeight = dialogue.height + 32;
+      const panelY = height - 210 - panelHeight / 2;
+      dialoguePanel.setPanelSize(744, panelHeight).setY(panelY);
+      dialogue.setY(panelY);
+    };
 
     const choices = thirdVisit ? [
       {
@@ -140,9 +150,11 @@ export default class HRScene extends Phaser.Scene {
     const choiceButtons = [];
     let speaking = false;
     const showContinue = (onContinue, caption = 'CONTINUE', y = height - 115) => {
-      const button = this.add.rectangle(width / 2, y,
-        thirdVisit ? 720 : 240, 50, 0x333333).setStrokeStyle(2, 0xffffff)
+      const button = roundedPanel(this, width / 2, y,
+        thirdVisit ? 720 : 240, 50, 0x354b4b)
         .setInteractive({ useHandCursor: true });
+      button.on('pointerover', () => button.setFillStyle(0x456361));
+      button.on('pointerout', () => button.setFillStyle(0x354b4b));
       const label = this.add.text(width / 2, y, caption, {
         fontFamily: 'Arial', fontSize: '20px', color: '#ffffff'
       }).setOrigin(0.5);
@@ -176,12 +188,12 @@ export default class HRScene extends Phaser.Scene {
     const updateChoices = enabled => {
       for (const { button, label, choice } of choiceButtons) {
         button.disableInteractive();
-        button.setFillStyle(0x222222);
-        label.setColor('#888888');
+        button.setFillStyle(0x202930);
+        label.setColor('#879399');
         if (enabled && !choice.used) {
           button.setInteractive({ useHandCursor: true });
-          button.setFillStyle(0x333333);
-          label.setColor('#ffffff');
+          button.setFillStyle(0x29343d);
+          label.setColor('#edf1eb');
         }
       }
     };
@@ -189,14 +201,14 @@ export default class HRScene extends Phaser.Scene {
     const speak = (message, onComplete) => {
       speaking = true;
       updateChoices(false);
-      dialogue.setText('HR\n');
+      updateDialogue('HR\n');
       let characterCount = 0;
       this.time.addEvent({
         delay: 25,
         repeat: message.length - 1,
         callback: () => {
           characterCount++;
-          dialogue.setText(`HR\n${message.slice(0, characterCount)}`);
+          updateDialogue(`HR\n${message.slice(0, characterCount)}`);
           if (characterCount === message.length) {
             speaking = false;
             onComplete();
@@ -208,8 +220,7 @@ export default class HRScene extends Phaser.Scene {
     for (let index = 0; index < choices.length; index++) {
       const choice = choices[index];
       const y = height - 175 + index * 60;
-      const button = this.add.rectangle(width / 2, y, 720, 50, 0x333333)
-        .setStrokeStyle(2, 0xffffff)
+      const button = roundedPanel(this, width / 2, y, 720, 50)
         .setVisible(false);
       const label = this.add.text(width / 2, y, choice.text, {
         fontFamily: 'Arial', fontSize: '16px', color: '#ffffff',
@@ -217,8 +228,8 @@ export default class HRScene extends Phaser.Scene {
       }).setOrigin(0.5).setVisible(false);
       choiceButtons.push({ button, label, choice });
 
-      button.on('pointerover', () => button.setFillStyle(0x555555));
-      button.on('pointerout', () => button.setFillStyle(speaking || choice.used ? 0x222222 : 0x333333));
+      button.on('pointerover', () => button.setFillStyle(0x3b5057));
+      button.on('pointerout', () => button.setFillStyle(speaking || choice.used ? 0x202930 : 0x29343d));
       button.on('pointerdown', () => {
         if (speaking || choice.used) return;
         choice.used = true;
@@ -245,7 +256,7 @@ export default class HRScene extends Phaser.Scene {
               this.progression.playerMaxMorale - this.progression.playerMorale);
             this.progression.playerMorale += healedMorale;
             this.updateOverview();
-            dialogue.setText(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
+            updateDialogue(`HR\n${choice.reply}\n\n+${healedMorale} Morale`);
 
             if (thirdVisit) {
               showContinue(() => leaveHR(), 'Go see the CEO', height - 175);

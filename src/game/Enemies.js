@@ -9,7 +9,7 @@ const enemies = {
   joblin: {
     id: 'joblin',
     name: 'JOBLIN',
-    maxHP: 80,
+    maxHP: 100,
     baseDamage: 4,
     damageIncrease: 1,
     abilities: [
@@ -120,7 +120,7 @@ const enemies = {
       }
     ],
     introReadTime: 3500,
-    maxHP: 85,
+    maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
     scale: 3,
@@ -161,7 +161,7 @@ const enemies = {
     id: 'ceoOverlord',
     name: 'CEO-VERLORD',
     abilities: [{ type: 'banTiles', everyTurns: 3,
-      description: 'Every third round, CEO-VERLORD bans a random tile type for your next two rounds. Free AI moves do not shorten the ban. Grey tiles can still be moved and matched, but you lose Morale equal to 50% of the damage dealt by that tile type, including cascades.' }],
+      description: 'At the start of the fight and every third round, CEO-VERLORD bans a random tile type for your next two rounds. Free AI moves do not shorten the ban. Grey tiles can still be moved and matched, but you lose Morale equal to 50% of the damage dealt by that tile type, including cascades.' }],
     hideAfterDeath: true,
     maxHP: 100,
     baseDamage: 5,
@@ -261,7 +261,7 @@ const enemies = {
     id: 'printosaurus',
     name: 'PRINTOSAURUS',
     y: 135,
-    maxHP: 90,
+    maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
     abilities: [

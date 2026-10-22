@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
+import roundedPanel from '../ui/roundedPanel.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -803,7 +804,8 @@ export default class MainScene extends Phaser.Scene {
     } else {
       await this.board.playInitialDrop(readyState);
     }
-    this.showEnemyDialogue('intro');
+    const startsWithBan = (this.enemyConfig.abilities ?? []).some(ability => ability.type === 'banTiles');
+    this.showEnemyDialogue(startsWithBan ? 'ban' : 'intro');
     if (this.aiPowerHint) {
       this.aiPowerHint.setVisible(true);
       this.aiButton.setTint(0xffff00);
@@ -892,7 +894,7 @@ export default class MainScene extends Phaser.Scene {
     this.board.setState('AI_MENU');
     this.aiMenu = this.add.container(0, 0).setDepth(60);
     const shade = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.65).setInteractive();
-    const panel = this.add.rectangle(400, 365, 600, 450, 0x222222).setStrokeStyle(2, 0xffffff);
+    const panel = roundedPanel(this, 400, 365, 600, 450, 0x1d272f);
     const title = this.add.text(400, 175, 'AI BOOSTERS', {
       fontSize: '24px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5);
@@ -909,14 +911,17 @@ export default class MainScene extends Phaser.Scene {
         ? 'Recover 10 Morale. Keep your turn.'
         : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
       const suspicionCost = swapping ? 20 : healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
-      const useButton = this.add.rectangle(400, y, 560, 95, 0x555555)
+      const useButton = roundedPanel(this, 400, y, 552, 95)
         .setInteractive({ useHandCursor: true });
+      useButton.on('pointerover', () => useButton.setFillStyle(0x3b5057));
+      useButton.on('pointerout', () => useButton.setFillStyle(0x29343d));
       if (this.aiUsesRemaining[power] <= 0) {
-        useButton.disableInteractive().setFillStyle(0x333333);
+        useButton.disableInteractive().setFillStyle(0x202930);
       }
       const label = this.add.text(400, y,
         `${powerName} - ${this.aiUsesRemaining[power]} uses left this fight\n${effect}\n+${suspicionCost} Suspicion per use.`, {
-          fontSize: '15px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+          fontSize: '15px', color: this.aiUsesRemaining[power] > 0 ? '#edf1eb' : '#879399',
+          fontFamily: 'Arial', align: 'center', lineSpacing: 3
         }).setOrigin(0.5);
       this.aiMenu.add([useButton, label]);
       useButton.on('pointerdown', () => {
@@ -927,10 +932,14 @@ export default class MainScene extends Phaser.Scene {
         else this.useBestMove();
       });
     }
-    const close = this.add.text(400, 565, 'CLOSE', {
-      fontSize: '18px', color: '#ffffff', fontFamily: 'Arial'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.aiMenu.add(close);
+    const close = roundedPanel(this, 400, 565, 160, 36, 0x354b4b)
+      .setInteractive({ useHandCursor: true });
+    const closeLabel = this.add.text(400, 565, 'CLOSE', {
+      fontSize: '16px', color: '#edf1eb', fontFamily: 'Arial'
+    }).setOrigin(0.5);
+    close.on('pointerover', () => close.setFillStyle(0x456361));
+    close.on('pointerout', () => close.setFillStyle(0x354b4b));
+    this.aiMenu.add([close, closeLabel]);
     close.on('pointerdown', () => this.closeAIMenu());
   }
 

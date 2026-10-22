@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import roundedPanel from '../ui/roundedPanel.js';
 
 export default class LunchScene extends Phaser.Scene {
   constructor() {
@@ -103,33 +104,43 @@ export default class LunchScene extends Phaser.Scene {
       });
     }
     if (!thirdVisit) {
-      this.add.sprite(170, height / 2 + 50, 'mysteriousColleague')
-        .setScale(2).play('mysterious-colleague-idle');
+      // Bordpladens midte er y=43,5; figuren har 12 gennemsigtige pixels under fødderne.
+      this.add.sprite(170, roomTop + 43.5 * background.scaleY + 12 * 2, 'mysteriousColleague')
+        .setOrigin(0.5, 1).setScale(2).play('mysterious-colleague-idle');
     }
 
-    const dialogue = this.add.text(width / 2, height - 205, '', {
+    const dialoguePanel = roundedPanel(this, width / 2, height - 245, 680, 140, 0x1d272f)
+      .setVisible(!thirdVisit);
+    const dialogue = this.add.text(width / 2, height - 245, '', {
       fontSize: '16px',
-      color: '#ffffff',
-      backgroundColor: '#222222',
+      color: '#edf1eb',
+      lineSpacing: 4,
       fontFamily: 'Arial',
       align: 'center',
-      padding: { x: 12, y: 10 },
       wordWrap: { width: 620 }
     }).setOrigin(0.5).setVisible(!thirdVisit);
+
+    const updateDialogue = text => {
+      dialogue.setText(text);
+      const panelHeight = dialogue.height + 32;
+      const panelY = height - 175 - panelHeight / 2;
+      dialoguePanel.setPanelSize(680, panelHeight).setY(panelY);
+      dialogue.setY(panelY);
+    };
 
     // Stop den forrige skriveeffekt, hvis spilleren vælger et svar undervejs.
     let dialogueTimer = null;
     const typeDialogue = message => {
       if (thirdVisit) return;
       dialogueTimer?.remove();
-      dialogue.setText('MYSTERIOUS COLLEAGUE\n');
+      updateDialogue('MYSTERIOUS COLLEAGUE\n');
       let characterCount = 0;
       dialogueTimer = this.time.addEvent({
         delay: 25,
         repeat: message.length - 1,
         callback: () => {
           characterCount++;
-          dialogue.setText(`MYSTERIOUS COLLEAGUE\n${message.slice(0, characterCount)}`);
+          updateDialogue(`MYSTERIOUS COLLEAGUE\n${message.slice(0, characterCount)}`);
         }
       });
     };
@@ -153,22 +164,23 @@ export default class LunchScene extends Phaser.Scene {
     for (let index = 0; index < powers.length; index++) {
       const power = powers[index];
       const x = thirdVisit ? width / 2 : width / 2 + (index === 0 ? -170 : 170);
-      const y = thirdVisit ? height - 320 + index * 95 : height - 115;
-      const choiceButton = this.add.rectangle(x, y, thirdVisit ? 600 : 320, 82, 0x555555)
-        .setStrokeStyle(2, 0xffffff)
+      const y = thirdVisit ? height - 320 + index * 95 : height - 125;
+      const choiceButton = roundedPanel(this, x, y, thirdVisit ? 600 : 320, 90)
         .setInteractive({ useHandCursor: true });
       const choiceLabel = this.add.text(x, y,
         `${power.title}\n${power.text}\n${power.uses} use(s) per fight.${power.keepTurn === false ? '' : ' Keep your turn.'}`, {
-          fontSize: '13px', color: '#ffffff', fontFamily: 'Arial', align: 'center'
+          fontSize: '13px', color: '#edf1eb', fontFamily: 'Arial', align: 'center', lineSpacing: 2
         }).setOrigin(0.5);
       choiceButtons.push(choiceButton);
       choiceLabels.push(choiceLabel);
       if (unlockedPowers.includes(power.id) || this.progression.lunchChoiceMade) {
-        choiceButton.disableInteractive().setFillStyle(0x333333);
+        choiceButton.disableInteractive().setFillStyle(0x202930);
         choiceLabel.setColor('#888888');
         if (unlockedPowers.includes(power.id)) choiceLabel.setText(`${power.title} UNLOCKED`);
       }
 
+      choiceButton.on('pointerover', () => choiceButton.setFillStyle(0x3b5057));
+      choiceButton.on('pointerout', () => choiceButton.setFillStyle(0x29343d));
       choiceButton.on('pointerdown', () => {
         if (this.progression.lunchChoiceMade || unlockedPowers.includes(power.id)) return;
         this.progression.lunchChoiceMade = true;
@@ -176,7 +188,8 @@ export default class LunchScene extends Phaser.Scene {
         boosters.selectedPower = power.id;
         boosters.unlockedPowers = [...unlockedPowers, power.id];
         this.registry.set('aiBoosters', boosters);
-        choiceButtons.forEach(button => button.disableInteractive());
+        choiceButtons.forEach(button => button.disableInteractive().setFillStyle(0x202930));
+        choiceButton.setFillStyle(0x354b4b).setStrokeStyle(2, 0x95b9a4);
         choiceLabels[index].setText(`${power.title} SELECTED`);
         typeDialogue(`Your AI power is ready. ${power.uses} use(s) per fight.\nYou keep your turn, but the Supervisor notices.`);
       });
@@ -185,8 +198,7 @@ export default class LunchScene extends Phaser.Scene {
     // =====================================
     // FORTSÆT TIL NÆSTE KAMP
     // =====================================
-    const button = this.add.rectangle(width / 2, height - 50, 220, 44, 0x555555)
-      .setStrokeStyle(3, 0xffffff)
+    const button = roundedPanel(this, width / 2, height - 50, 220, 44, 0x354b4b)
       .setInteractive({ useHandCursor: true });
 
     this.add.text(width / 2, height - 50, 'CONTINUE', {
@@ -196,8 +208,8 @@ export default class LunchScene extends Phaser.Scene {
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    button.on('pointerover', () => button.setFillStyle(0x777777));
-    button.on('pointerout', () => button.setFillStyle(0x555555));
+    button.on('pointerover', () => button.setFillStyle(0x456361));
+    button.on('pointerout', () => button.setFillStyle(0x354b4b));
     button.on('pointerdown', () => {
       if (!this.progression.lunchChoiceMade) {
         typeDialogue('Choose an AI power before returning to work.');

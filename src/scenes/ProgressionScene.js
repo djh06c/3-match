@@ -79,7 +79,7 @@ export default class ProgressionScene extends Phaser.Scene {
       suspicionBar.displayWidth = 180 * Phaser.Math.Clamp(suspicion / 100, 0, 1);
 
       this.add.text(width / 2, height / 2 - 30,
-        'Where would you like to go?', {
+        'Choose one', {
           fontSize: '18px',
           color: '#ffffff',
           fontFamily: 'Arial',
@@ -93,11 +93,12 @@ export default class ProgressionScene extends Phaser.Scene {
         .setStrokeStyle(3, 0xffffff)
         .setInteractive({ useHandCursor: true });
 
-      this.add.text(width / 2 - 140, height / 2 + 40, 'LUNCH BREAK', {
-        fontSize: '22px',
+      this.add.text(width / 2 - 140, height / 2 + 40, 'LUNCH BREAK\n(Choose power)', {
+        fontSize: '18px',
         color: '#ffffff',
         fontFamily: 'Arial',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        align: 'center'
       }).setOrigin(0.5);
 
       lunchButton.on('pointerover', () => lunchButton.setFillStyle(0x777777));
@@ -111,7 +112,7 @@ export default class ProgressionScene extends Phaser.Scene {
         .setStrokeStyle(3, 0xffffff)
         .setInteractive({ useHandCursor: true });
 
-      this.add.text(width / 2 + 140, height / 2 + 40, this.progression.hrVisited ? 'HR\nVISITED' : 'HR', {
+      this.add.text(width / 2 + 140, height / 2 + 40, this.progression.hrVisited ? 'HR\nVISITED' : 'HR\n(Morale boost)', {
         fontSize: '18px',
         color: '#ffffff',
         fontFamily: 'Arial',
