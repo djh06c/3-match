@@ -12,16 +12,16 @@ export default class Match3Grid {
     // 0 = helt tilfældigt
     // 1 = moderat balancing
     // 2+ = stærkere balancing
-    this.weightStrength = 1.0;
+    this.weightStrength = 1.5;
 
     // En tile må aldrig få mindre end denne vægt.
     // Ellers kan en type næsten forsvinde helt.
     this.minimumWeight = 0.15;
   }
 
-  // =====================================================
-  // GENERATION
-  // =====================================================
+  // =====================================
+  // OPRETTELSE AF SPILLEBRÆTTET
+  // =====================================
 
   generateGrid() {
     let attempts = 0;
@@ -59,9 +59,9 @@ export default class Match3Grid {
     );
   }
 
-  // =====================================================
-  // WEIGHTED TILE SELECTION
-  // =====================================================
+  // =====================================
+  // VÆGTET VALG AF BRIKKER
+  // =====================================
 
   randomColor() {
     const counts = this.getColorCounts();
@@ -173,9 +173,9 @@ export default class Match3Grid {
     return weights.length - 1;
   }
 
-  // =====================================================
-  // INITIAL MATCH PREVENTION
-  // =====================================================
+  // =====================================
+  // UNDGÅ MATCH VED SPILSTART
+  // =====================================
 
   wouldCreateInitialMatch(
     row,
@@ -202,9 +202,9 @@ export default class Match3Grid {
     return false;
   }
 
-  // =====================================================
-  // BASIC HELPERS
-  // =====================================================
+  // =====================================
+  // GRUNDLÆGGENDE HJÆLPEFUNKTIONER
+  // =====================================
 
   inBounds(row, col) {
     return (
@@ -250,9 +250,9 @@ export default class Match3Grid {
       temp;
   }
 
-  // =====================================================
-  // SWAP VALIDATION
-  // =====================================================
+  // =====================================
+  // KONTROL AF BRIKBYT
+  // =====================================
 
   matchesContainEitherCell(
     matches,
@@ -334,16 +334,16 @@ export default class Match3Grid {
     return true;
   }
 
-  // =====================================================
-  // FIND MATCHES
-  // =====================================================
+  // =====================================
+  // FIND MATCH
+  // =====================================
 
   findMatches() {
     const matches = [];
 
-    // -------------------------
-    // Horizontal
-    // -------------------------
+    // =====================================
+    // VANDRETTE MATCH
+    // =====================================
 
     for (
       let row = 0;
@@ -398,9 +398,9 @@ export default class Match3Grid {
       }
     }
 
-    // -------------------------
-    // Vertical
-    // -------------------------
+    // =====================================
+    // LODRETTE MATCH
+    // =====================================
 
     for (
       let col = 0;
@@ -458,11 +458,11 @@ export default class Match3Grid {
     return matches;
   }
 
-  // =====================================================
-  // COLLAPSE + REFILL
-  // =====================================================
+  // =====================================
+  // FALD OG GENOPFYLDNING
+  // =====================================
 
-  collapseAndRefill(matches) {
+  collapseAndRefill(matches, refill = true) {
     const matchedCells =
       new Set();
 
@@ -500,9 +500,9 @@ export default class Match3Grid {
     const moved = [];
     const spawned = [];
 
-    // -------------------------
-    // Gravity
-    // -------------------------
+    // =====================================
+    // BRIKKERNES FALD
+    // =====================================
 
     for (
       let col = 0;
@@ -544,9 +544,11 @@ export default class Match3Grid {
         writeRow--;
       }
 
-      // -------------------------
-      // Weighted refill
-      // -------------------------
+      // =====================================
+      // VÆGTET GENOPFYLDNING
+      // =====================================
+
+      if (!refill) continue;
 
       for (
         let row = writeRow;
@@ -578,9 +580,25 @@ export default class Match3Grid {
     };
   }
 
-  // =====================================================
-  // VALID MOVE CHECK
-  // =====================================================
+  // =====================================
+  // KONTROL AF MULIGE TRÆK
+  // =====================================
+
+  // Tæl sikre match og kaskader på en kopi uden tilfældige nye brikker.
+  scoreSwapWithCascades(row, col, otherRow, otherCol) {
+    const simulation = new Match3Grid(this.rows, this.cols, this.colorCount);
+    simulation.cells = this.cells.map(cells => [...cells]);
+    if (!simulation.trySwap(row, col, otherRow, otherCol)) return 0;
+
+    let score = 0;
+    let matches = simulation.findMatches();
+    while (matches.length > 0) {
+      const changes = simulation.collapseAndRefill(matches, false);
+      score += changes.removed.length;
+      matches = simulation.findMatches();
+    }
+    return score;
+  }
 
   hasValidMoves() {
     for (

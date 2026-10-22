@@ -5,9 +5,9 @@ export default class Match3Board {
   constructor(scene, config = {}) {
     this.scene = scene;
 
-    // =====================================================
-    // CONFIG
-    // =====================================================
+    // =====================================
+    // OPSÆTNING
+    // =====================================
 
     this.rows = config.rows ?? 8;
     this.cols = config.cols ?? 8;
@@ -19,12 +19,15 @@ export default class Match3Board {
     this.x = config.x ?? 0;
     this.y = config.y ?? 0;
 
-    this.onMoveComplete = config.onMoveComplete ?? null;
-    this.onStateChange = config.onStateChange ?? null;
+    this.onMoveComplete =
+      config.onMoveComplete ?? null;
 
-    // =====================================================
-    // STATE
-    // =====================================================
+    this.onStateChange =
+      config.onStateChange ?? null;
+
+    // =====================================
+    // TILSTAND
+    // =====================================
 
     this.state = 'IDLE';
 
@@ -35,31 +38,33 @@ export default class Match3Board {
     this.dragStartTile = null;
     this.dragSwapTriggered = false;
 
-    // =====================================================
-    // TILE APPEARANCE
-    // =====================================================
+    // =====================================
+    // BRIKKERNES UDSEENDE
+    // =====================================
 
-    this.tileColors = config.tileColors ?? [
-      0x8b5cf6,
-      0x06b6d4,
-      0x22c55e,
-      0xf59e0b,
-      0xef4444,
-      0xe5e7eb
-    ];
+    this.tileColors =
+      config.tileColors ?? [
+        0x8b5cf6,
+        0x06b6d4,
+        0x22c55e,
+        0xf59e0b,
+        0xef4444,
+        0xe5e7eb
+      ];
 
-    this.tileTextures = config.tileTextures ?? [
-      'coffee',
-      'email',
-      'laptop',
-      'notebook',
-      'phone',
-      'clock'
-    ];
+    this.tileTextures =
+      config.tileTextures ?? [
+        'coffee',
+        'email',
+        'laptop',
+        'notebook',
+        'phone',
+        'clock'
+      ];
 
-    // =====================================================
-    // GRID
-    // =====================================================
+    // =====================================
+    // DET LOGISKE SPILLEBRÆT
+    // =====================================
 
     this.grid = new Match3Grid(
       this.rows,
@@ -69,73 +74,207 @@ export default class Match3Board {
 
     this.grid.generateGrid();
 
-    // =====================================================
-    // PHASER OBJECTS
-    // =====================================================
+    // =====================================
+    // PHASER-OBJEKTER
+    // =====================================
 
-    this.container = this.scene.add.container(0, 0);
+    this.container =
+      this.scene.add.container(
+        0,
+        0
+      );
 
-    this.tileViews = Array.from(
-      { length: this.rows },
-      () => Array(this.cols).fill(null)
+    // =====================================
+    // AFGRÆNSNING AF SPILLEBRÆTTET
+    // =====================================
+
+    /*
+     * Masken gør, at tiles kun kan ses
+     * inde i selve match-3-boardets område.
+     *
+     * Tiles kan derfor godt eksistere over
+     * eller under boardet under animationer,
+     * men de bliver først synlige, når de
+     * bevæger sig ind i dette rektangel.
+     */
+
+    this.boardMaskShape =
+      this.scene.make.graphics({
+        x: 0,
+        y: 0,
+        add: false
+      });
+
+    this.boardMaskShape.fillStyle(
+      0xffffff
     );
+
+    this.boardMaskShape.fillRect(
+      this.x,
+      this.y,
+      this.cols * this.tileSize,
+      this.rows * this.tileSize
+    );
+
+    this.boardMask =
+      this.boardMaskShape.createGeometryMask();
+
+    this.container.setMask(
+      this.boardMask
+    );
+
+    // =====================================
+    // TILES GRAFIK
+    // =====================================
+
+    this.tileViews =
+      Array.from(
+        {
+          length: this.rows
+        },
+        () =>
+          Array(
+            this.cols
+          ).fill(null)
+      );
 
     this.createInitialTiles();
 
-    // Hvis pointer bliver sluppet udenfor en konkret tile,
-    // sørger vi for at drag-state ikke bliver hængende.
-    this.scene.input.on('pointerup', () => {
-      if (
-        this.pointerDown &&
-        !this.dragSwapTriggered
-      ) {
-        this.resetPointerState();
+    // Hvis pointer bliver sluppet
+    // udenfor en tile.
+    this.scene.input.on(
+      'pointerup',
+      pointer => {
+        if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+          this.handlePointerUp(this.dragStartTile, pointer);
+          return;
+        }
+        if (
+          this.pointerDown &&
+          !this.dragSwapTriggered
+        ) {
+          this.resetPointerState();
+        }
+      }
+    );
+    this.scene.input.on('pointermove', pointer => {
+      if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+        this.dragStartTile.setPosition(pointer.worldX, pointer.worldY);
       }
     });
   }
 
-  // =====================================================
-  // STATE
-  // =====================================================
+  // =====================================
+  // TILSTAND
+  // =====================================
+
+  // =====================================
+  // INK PÅ BRIKKERNE
+  // =====================================
+  coverTilesWithInk(count) {
+    this.clearInk();
+    const tiles = this.tileViews.flat().filter(tile => tile);
+
+    for (let index = 0; index < count && tiles.length > 0; index++) {
+      const randomIndex = Phaser.Math.Between(0, tiles.length - 1);
+      const tile = tiles.splice(randomIndex, 1)[0];
+      const ink = this.scene.add.image(0, 0, 'inkStain');
+      ink.setDisplaySize(this.tileSize - 4, this.tileSize - 4);
+      tile.icon?.setVisible(false);
+      // Attach ink to the tile so it follows swaps and falling tiles.
+      tile.add(ink);
+      tile.ink = ink;
+    }
+    this.updateSelectionVisuals();
+  }
+
+  clearInk() {
+    for (const tile of this.tileViews.flat()) {
+      if (tile?.ink) {
+        tile.ink.destroy();
+        tile.ink = null;
+        tile.icon?.setVisible(true);
+      }
+    }
+    this.updateSelectionVisuals();
+  }
+
+  // =====================================
+  // FRIT BRIKBYT MED AI
+  // =====================================
+  beginManualSwap(onCommit) {
+    this.resetPointerState();
+    this.selectedCell = null;
+    this.updateSelectionVisuals();
+    this.manualSwapCommit = onCommit;
+    this.setState('AI_TILE_SWAP');
+  }
+
+  cancelManualSwap() {
+    if (this.dragStartTile) {
+      const position = this.getCellPosition(this.dragStartTile.gridRow, this.dragStartTile.gridCol);
+      this.dragStartTile.setPosition(position.x, position.y);
+    }
+    this.resetPointerState();
+    this.manualSwapCommit = null;
+    this.setState('IDLE');
+  }
 
   setState(state) {
     this.state = state;
 
     if (this.onStateChange) {
-      this.onStateChange(state);
+      this.onStateChange(
+        state
+      );
     }
   }
 
-  // =====================================================
-  // INITIAL BOARD
-  // =====================================================
+  // =====================================
+  // OPRETTELSE AF DE FØRSTE TILES
+  // =====================================
 
   createInitialTiles() {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
-        const value = this.grid.cells[row][col];
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const value =
+          this.grid.cells
+            [row]
+            [col];
 
-        const position = this.getCellPosition(
-          row,
-          col
-        );
+        const position =
+          this.getCellPosition(
+            row,
+            col
+          );
 
-        const tile = this.createTileView(
-          value,
-          row,
-          col,
-          position.x,
-          position.y
-        );
+        const tile =
+          this.createTileView(
+            value,
+            row,
+            col,
+            position.x,
+            position.y
+          );
 
-        this.tileViews[row][col] = tile;
+        this.tileViews
+          [row]
+          [col] = tile;
       }
     }
   }
 
-  // =====================================================
-  // TILE CREATION
-  // =====================================================
+  // =====================================
+  // OPRETTELSE AF EN TILE
+  // =====================================
 
   createTileView(
     value,
@@ -144,18 +283,19 @@ export default class Match3Board {
     x,
     y
   ) {
-    const tile = this.scene.add.container(
-      x,
-      y
-    );
+    const tile =
+      this.scene.add.container(
+        x,
+        y
+      );
 
     tile.gridRow = row;
     tile.gridCol = col;
     tile.tileValue = value;
 
-    // -------------------------
-    // Background / border
-    // -------------------------
+    // =====================================
+    // BAGGRUND OG RAMME
+    // =====================================
 
     const background =
       this.scene.add.rectangle(
@@ -173,17 +313,24 @@ export default class Match3Board {
     );
 
     tile.border = background;
-    tile.add(background);
 
-    // -------------------------
-    // Icon
-    // -------------------------
+    tile.add(
+      background
+    );
+
+    // =====================================
+    // IKON
+    // =====================================
 
     const texture =
-      this.tileTextures[value];
+      this.tileTextures[
+        value
+      ];
 
     if (
-      this.scene.textures.exists(texture)
+      this.scene.textures.exists(
+        texture
+      )
     ) {
       const icon =
         this.scene.add.image(
@@ -198,7 +345,11 @@ export default class Match3Board {
       );
 
       tile.icon = icon;
-      tile.add(icon);
+      if (value === this.bannedTileType) icon.setTint(0x777777).setAlpha(0.5);
+
+      tile.add(
+        icon
+      );
     } else {
       const fallback =
         this.scene.add.text(
@@ -211,14 +362,18 @@ export default class Match3Board {
           }
         );
 
-      fallback.setOrigin(0.5);
+      fallback.setOrigin(
+        0.5
+      );
 
-      tile.add(fallback);
+      tile.add(
+        fallback
+      );
     }
 
-    // -------------------------
-    // Input zone
-    // -------------------------
+    // =====================================
+    // KLIKOMRÅDE
+    // =====================================
 
     const hitZone =
       this.scene.add.rectangle(
@@ -234,11 +389,12 @@ export default class Match3Board {
       useHandCursor: true
     });
 
-    tile.hitZone = hitZone;
+    tile.hitZone =
+      hitZone;
 
-    // Tilføj sidst, så den ligger ovenpå
-    // resten input-mæssigt.
-    tile.add(hitZone);
+    tile.add(
+      hitZone
+    );
 
     hitZone.on(
       'pointerdown',
@@ -270,16 +426,21 @@ export default class Match3Board {
       }
     );
 
-    this.container.add(tile);
+    this.container.add(
+      tile
+    );
 
     return tile;
   }
 
-  // =====================================================
-  // POSITION
-  // =====================================================
+  // =====================================
+  // PLACERING
+  // =====================================
 
-  getCellPosition(row, col) {
+  getCellPosition(
+    row,
+    col
+  ) {
     return {
       x:
         this.x +
@@ -293,21 +454,30 @@ export default class Match3Board {
     };
   }
 
-  // =====================================================
-  // POINTER INPUT
-  // =====================================================
+  // =====================================
+  // MUS OG BERØRING
+  // =====================================
 
-  handlePointerDown(tile, pointer) {
-    if (this.state !== 'IDLE') {
+  handlePointerDown(
+    tile,
+    pointer
+  ) {
+    if (
+      this.state !== 'IDLE' && this.state !== 'AI_TILE_SWAP'
+    ) {
       return;
     }
 
     this.pointerDown = true;
     this.dragStartTile = tile;
+    if (this.state === 'AI_TILE_SWAP') this.container.bringToTop(tile);
     this.dragSwapTriggered = false;
   }
 
-  async handlePointerOver(tile, pointer) {
+  async handlePointerOver(
+    tile,
+    pointer
+  ) {
     if (
       !this.pointerDown ||
       !this.dragStartTile ||
@@ -320,12 +490,12 @@ export default class Match3Board {
     const start =
       this.dragStartTile;
 
-    // Stadig samme tile
-    if (start === tile) {
+    if (
+      start === tile
+    ) {
       return;
     }
 
-    // Kun naboer må bruges til drag-swap
     if (
       !this.grid.areAdjacent(
         start.gridRow,
@@ -337,9 +507,12 @@ export default class Match3Board {
       return;
     }
 
-    this.dragSwapTriggered = true;
+    this.dragSwapTriggered =
+      true;
 
-    this.selectedCell = null;
+    this.selectedCell =
+      null;
+
     this.updateSelectionVisuals();
 
     await this.performSwap(
@@ -352,15 +525,31 @@ export default class Match3Board {
     this.resetPointerState();
   }
 
-  async handlePointerUp(tile, pointer) {
-    if (!this.pointerDown) {
+  async handlePointerUp(
+    tile,
+    pointer
+  ) {
+    if (this.state === 'AI_TILE_SWAP' && this.dragStartTile) {
+      const start = this.dragStartTile;
+      const row = Math.floor((pointer.worldY - this.y) / this.tileSize);
+      const col = Math.floor((pointer.worldX - this.x) / this.tileSize);
+      const position = this.getCellPosition(start.gridRow, start.gridCol);
+      start.setPosition(position.x, position.y);
+      this.resetPointerState();
+      if (this.grid.inBounds(row, col) && (row !== start.gridRow || col !== start.gridCol)) {
+        await this.performSwap(start.gridRow, start.gridCol, row, col, true);
+      }
+      return;
+    }
+    if (
+      !this.pointerDown
+    ) {
       return;
     }
 
-    // Hvis drag allerede har udført swappet,
-    // skal et efterfølgende pointerup
-    // ikke gøre noget.
-    if (this.dragSwapTriggered) {
+    if (
+      this.dragSwapTriggered
+    ) {
       this.resetPointerState();
       return;
     }
@@ -370,7 +559,9 @@ export default class Match3Board {
 
     this.resetPointerState();
 
-    if (!clickedTile) {
+    if (
+      !clickedTile
+    ) {
       return;
     }
 
@@ -386,41 +577,48 @@ export default class Match3Board {
     this.dragSwapTriggered = false;
   }
 
-  // =====================================================
-  // CLICK-TO-SWAP
-  // =====================================================
+  // =====================================
+  // BYT BRIKKER MED KLIK
+  // =====================================
 
-  async handleTileClick(row, col) {
-    if (this.state !== 'IDLE') {
+  async handleTileClick(
+    row,
+    col
+  ) {
+    if (
+      this.state !== 'IDLE'
+    ) {
       return;
     }
 
-    // Første tile vælges
-    if (!this.selectedCell) {
+    if (
+      !this.selectedCell
+    ) {
       this.selectedCell = {
         row,
         col
       };
 
       this.updateSelectionVisuals();
+
       return;
     }
 
     const first =
       this.selectedCell;
 
-    // Samme tile igen = deselect
     if (
       first.row === row &&
       first.col === col
     ) {
-      this.selectedCell = null;
+      this.selectedCell =
+        null;
+
       this.updateSelectionVisuals();
+
       return;
     }
 
-    // Hvis ikke nabo:
-    // vælg den nye tile
     if (
       !this.grid.areAdjacent(
         first.row,
@@ -435,10 +633,13 @@ export default class Match3Board {
       };
 
       this.updateSelectionVisuals();
+
       return;
     }
 
-    this.selectedCell = null;
+    this.selectedCell =
+      null;
+
     this.updateSelectionVisuals();
 
     await this.performSwap(
@@ -449,69 +650,104 @@ export default class Match3Board {
     );
   }
 
-  // =====================================================
-  // UNIVERSAL SWAP
-  // =====================================================
+  // =====================================
+  // FÆLLES BRIKBYT
+  // =====================================
 
   async performSwap(
     firstRow,
     firstCol,
     secondRow,
-    secondCol
+    secondCol,
+    manualSwap = false
   ) {
-    if (this.state !== 'IDLE') {
+    if (
+      this.state !== 'IDLE' && !(manualSwap && this.state === 'AI_TILE_SWAP')
+    ) {
       return;
     }
 
-    this.setState('SWAPPING');
+    this.setState(
+      'SWAPPING'
+    );
 
     const tileA =
-      this.tileViews[firstRow][firstCol];
+      this.tileViews
+        [firstRow]
+        [firstCol];
 
     const tileB =
-      this.tileViews[secondRow][secondCol];
+      this.tileViews
+        [secondRow]
+        [secondCol];
 
-    if (!tileA || !tileB) {
-      this.setState('IDLE');
+    if (
+      !tileA ||
+      !tileB
+    ) {
+      this.setState(
+        'IDLE'
+      );
+
       return;
     }
 
-    // -------------------------
-    // Visuel swap
-    // -------------------------
+    // =====================================
+    // ANIMERET BRIKBYT
+    // =====================================
 
+    if (manualSwap) {
+      this.manualSwapCommit();
+      this.manualSwapCommit = null;
+      if (this.scene.supervisorDialogueActive) {
+        await new Promise(resolve => this.scene.events.once('supervisor-dialogue-closed', resolve));
+      }
+    }
     await this.animateSwap(
       tileA,
       tileB
     );
 
-    // -------------------------
-    // Logisk swap
-    // -------------------------
+    // =====================================
+    // LOGISK BRIKBYT
+    // =====================================
 
-    const success =
-      this.grid.trySwap(
+    let success;
+    if (manualSwap) {
+      this.grid.swapCells(firstRow, firstCol, secondRow, secondCol);
+      success = true;
+    } else {
+      success = this.grid.trySwap(
         firstRow,
         firstCol,
         secondRow,
         secondCol
       );
+    }
 
-    // -------------------------
-    // Ugyldigt move
-    // -------------------------
+    // =====================================
+    // UGYLDIGT TRÆK
+    // =====================================
 
-    if (!success) {
-      this.setState('SWAP_BACK');
+    if (
+      !success
+    ) {
+      this.setState(
+        'SWAP_BACK'
+      );
 
       await this.animateSwap(
         tileA,
         tileB
       );
 
-      this.setState('IDLE');
+      this.setState(
+        'IDLE'
+      );
 
-      if (this.onMoveComplete) {
+      if (
+        this.onMoveComplete
+      ) {
         this.onMoveComplete({
           valid: false,
           chains: 0,
@@ -523,15 +759,17 @@ export default class Match3Board {
       return;
     }
 
-    // -------------------------
-    // Opdatér tileViews
-    // -------------------------
+    // =====================================
+    // OPDATERING AF BRIKKERNES GRAFIK
+    // =====================================
 
-    this.tileViews[firstRow][firstCol] =
-      tileB;
+    this.tileViews
+      [firstRow]
+      [firstCol] = tileB;
 
-    this.tileViews[secondRow][secondCol] =
-      tileA;
+    this.tileViews
+      [secondRow]
+      [secondCol] = tileA;
 
     this.updateTilePositionData(
       tileB,
@@ -545,35 +783,68 @@ export default class Match3Board {
       secondCol
     );
 
-    // -------------------------
-    // Resolve matches/cascades
-    // -------------------------
+    // =====================================
+    // AFVIKLING AF MATCH
+    // =====================================
 
     await this.resolveBoard();
   }
 
-  // =====================================================
-  // SELECTION VISUAL
-  // =====================================================
+  // =====================================
+  // MARKERING AF VALGTE BRIKKER
+  // =====================================
+
+  setBannedTile(tileType) {
+    this.bannedTileType = tileType;
+    for (const row of this.tileViews) {
+      for (const tile of row) {
+        if (!tile?.icon) continue;
+        tile.icon.clearTint().setAlpha(1);
+        if (tile.tileValue === tileType) tile.icon.setTint(0x777777).setAlpha(0.5);
+      }
+    }
+    this.updateSelectionVisuals();
+  }
 
   updateSelectionVisuals() {
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
         const selected =
           this.selectedCell &&
-          this.selectedCell.row === row &&
-          this.selectedCell.col === col;
+          this.selectedCell.row ===
+            row &&
+          this.selectedCell.col ===
+            col;
 
         tile.border.setStrokeStyle(
-          selected ? 5 : 3,
           selected
+            ? 5
+            : 3,
+
+          tile.ink
+            ? 0x000000
+            : tile.tileValue === this.bannedTileType
+            ? 0x777777
+            : selected
             ? 0xffff00
             : this.tileColors[
                 tile.tileValue
@@ -583,11 +854,14 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // SWAP ANIMATION
-  // =====================================================
+  // =====================================
+  // ANIMATION AF BRIKBYT
+  // =====================================
 
-  async animateSwap(tileA, tileB) {
+  async animateSwap(
+    tileA,
+    tileB
+  ) {
     const a = {
       x: tileA.x,
       y: tileA.y
@@ -605,7 +879,8 @@ export default class Match3Board {
           x: b.x,
           y: b.y,
           duration: 140,
-          ease: 'Quad.easeInOut'
+          ease:
+            'Quad.easeInOut'
         }
       ),
 
@@ -615,15 +890,16 @@ export default class Match3Board {
           x: a.x,
           y: a.y,
           duration: 140,
-          ease: 'Quad.easeInOut'
+          ease:
+            'Quad.easeInOut'
         }
       )
     ]);
   }
 
-  // =====================================================
-  // RESOLVE BOARD
-  // =====================================================
+  // =====================================
+  // AFVIKLING AF SPILLEBRÆTTET
+  // =====================================
 
   async resolveBoard() {
     let chainCount = 0;
@@ -635,7 +911,9 @@ export default class Match3Board {
       const matches =
         this.grid.findMatches();
 
-      if (matches.length === 0) {
+      if (
+        matches.length === 0
+      ) {
         break;
       }
 
@@ -649,61 +927,116 @@ export default class Match3Board {
       totalMatched +=
         uniqueCells.length;
 
+      // Gem tile-typen før tiles bliver fjernet.
+      const matchesWithTypes =
+        matches.map(match => {
+          const firstCell =
+            match.cells[0];
+
+          const tileValue =
+            this.grid.cells
+              [firstCell.row]
+              [firstCell.col];
+
+          return {
+            ...match,
+            tileValue
+          };
+        });
+
       allMatches.push({
-        chain: chainCount,
-        matches
+        chain:
+          chainCount,
+
+        matches:
+          matchesWithTypes
       });
 
-      // -------------------------
-      // Pop matches
-      // -------------------------
+      // =====================================
+      // FJERNELSE AF MATCHEDE BRIKKER
+      // =====================================
 
-      this.setState('REMOVING');
+      this.setState(
+        'REMOVING'
+      );
 
       await this.animateMatches(
         matches
       );
 
-      // -------------------------
-      // Gravity/refill
-      // -------------------------
+      // =====================================
+      // FALD OG GENOPFYLDNING
+      // =====================================
 
       const changes =
         this.grid.collapseAndRefill(
           matches
         );
 
-      this.setState('FALLING');
+      this.setState(
+        'FALLING'
+      );
 
       await this.animateCollapseAndRefill(
         changes
       );
 
-      // Lille pause mellem cascades
-      await this.pause(60);
+      await this.pause(
+        60
+      );
     }
 
     const hasValidMoves =
       this.grid.hasValidMoves();
 
-    this.setState('IDLE');
+    // =====================================
+    // SPILLET ER SLUT
+    // =====================================
 
-    if (this.onMoveComplete) {
+    if (
+      !hasValidMoves
+    ) {
+      this.setState(
+        'GAME_OVER_FALL'
+      );
+
+      await this.playGameOverDrop();
+
+      this.setState(
+        'GAME_OVER'
+      );
+    } else {
+      this.setState(
+        'IDLE'
+      );
+    }
+
+    if (
+      this.onMoveComplete
+    ) {
       this.onMoveComplete({
         valid: true,
-        chains: chainCount,
+
+        chains:
+          chainCount,
+
         totalMatched,
-        matches: allMatches,
+
+        matches:
+          allMatches,
+
         hasValidMoves
       });
     }
   }
 
-  // =====================================================
-  // MATCH ANIMATION
-  // =====================================================
+  // =====================================
+  // ANIMATION AF MATCH
+  // =====================================
 
-  async animateMatches(matches) {
+  async animateMatches(
+    matches
+  ) {
     const cells =
       this.getUniqueMatchCells(
         matches
@@ -711,18 +1044,27 @@ export default class Match3Board {
 
     const targets = [];
 
-    for (const cell of cells) {
+    for (
+      const cell
+      of cells
+    ) {
       const tile =
         this.tileViews
           [cell.row]
           [cell.col];
 
-      if (tile) {
-        targets.push(tile);
+      if (
+        tile
+      ) {
+        targets.push(
+          tile
+        );
       }
     }
 
-    if (targets.length === 0) {
+    if (
+      targets.length === 0
+    ) {
       return;
     }
 
@@ -733,7 +1075,8 @@ export default class Match3Board {
         scaleX: 1.15,
         scaleY: 1.15,
         duration: 70,
-        ease: 'Quad.easeOut'
+        ease:
+          'Quad.easeOut'
       }
     );
 
@@ -745,18 +1088,24 @@ export default class Match3Board {
         scaleY: 0,
         alpha: 0,
         duration: 110,
-        ease: 'Back.easeIn'
+        ease:
+          'Back.easeIn'
       }
     );
 
     // Destroy matched tiles
-    for (const cell of cells) {
+    for (
+      const cell
+      of cells
+    ) {
       const tile =
         this.tileViews
           [cell.row]
           [cell.col];
 
-      if (!tile) {
+      if (
+        !tile
+      ) {
         continue;
       }
 
@@ -768,18 +1117,23 @@ export default class Match3Board {
     }
   }
 
-  // =====================================================
-  // GRAVITY / REFILL ANIMATION
-  // =====================================================
+  // =====================================
+  // FALD OG GENOPFYLDNING
+  // =====================================
 
   async animateCollapseAndRefill(
     changes
   ) {
     const newViews =
       Array.from(
-        { length: this.rows },
+        {
+          length:
+            this.rows
+        },
         () =>
-          Array(this.cols).fill(null)
+          Array(
+            this.cols
+          ).fill(null)
       );
 
     const moveMap =
@@ -797,16 +1151,28 @@ export default class Match3Board {
 
     const animations = [];
 
-    // -------------------------
-    // Existing tiles
-    // -------------------------
+    // =====================================
+    // EKSISTERENDE BRIKKER
+    // =====================================
 
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
@@ -820,8 +1186,9 @@ export default class Match3Board {
             ? movement.toRow
             : row;
 
-        newViews[targetRow][col] =
-          tile;
+        newViews
+          [targetRow]
+          [col] = tile;
 
         this.updateTilePositionData(
           tile,
@@ -829,7 +1196,9 @@ export default class Match3Board {
           col
         );
 
-        if (movement) {
+        if (
+          movement
+        ) {
           const target =
             this.getCellPosition(
               targetRow,
@@ -846,12 +1215,16 @@ export default class Match3Board {
             this.tween(
               tile,
               {
-                x: target.x,
-                y: target.y,
+                x:
+                  target.x,
+
+                y:
+                  target.y,
 
                 duration:
                   150 +
-                  distance * 35,
+                  distance *
+                    35,
 
                 ease:
                   'Cubic.easeIn'
@@ -862,9 +1235,9 @@ export default class Match3Board {
       }
     }
 
-    // -------------------------
-    // Spawn new tiles
-    // -------------------------
+    // =====================================
+    // NYE BRIKKER
+    // =====================================
 
     for (
       const spawn
@@ -893,7 +1266,8 @@ export default class Match3Board {
 
       newViews
         [spawn.toRow]
-        [spawn.col] = tile;
+        [spawn.col] =
+        tile;
 
       const distance =
         spawn.toRow -
@@ -903,12 +1277,16 @@ export default class Match3Board {
         this.tween(
           tile,
           {
-            x: end.x,
-            y: end.y,
+            x:
+              end.x,
+
+            y:
+              end.y,
 
             duration:
               170 +
-              distance * 35,
+              distance *
+                35,
 
             ease:
               'Cubic.easeIn'
@@ -925,40 +1303,218 @@ export default class Match3Board {
     );
 
     // Reset visuelle properties
-    for (let row = 0; row < this.rows; row++) {
-      for (let col = 0; col < this.cols; col++) {
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
         const tile =
-          this.tileViews[row][col];
+          this.tileViews
+            [row]
+            [col];
 
-        if (!tile) {
+        if (
+          !tile
+        ) {
           continue;
         }
 
-        tile.setScale(1);
-        tile.setAlpha(1);
+        tile.setScale(
+          1
+        );
+
+        tile.setAlpha(
+          1
+        );
       }
     }
   }
 
-  // =====================================================
-  // HELPERS
-  // =====================================================
+  // =====================================
+  // BRIKKERNES FALD VED SPILSTART
+  // =====================================
+
+  async playInitialDrop(endState = 'IDLE') {
+    /*
+     * Boardet låses mens tiles falder ind.
+     */
+    this.setState(
+      'FALLING'
+    );
+
+    const animations = [];
+
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const tile =
+          this.tileViews
+            [row]
+            [col];
+
+        if (
+          !tile
+        ) {
+          continue;
+        }
+
+        const target =
+          this.getCellPosition(
+            row,
+            col
+          );
+
+        /*
+         * Tiles starter fysisk over boardet.
+         *
+         * Board-masken sørger for, at de
+         * IKKE kan ses deroppe.
+         */
+        tile.y =
+          this.y -
+          this.tileSize *
+            (
+              this.rows -
+              row +
+              2
+            );
+
+        animations.push(
+          this.tween(
+            tile,
+            {
+              y:
+                target.y,
+
+              duration:
+                350 +
+                row * 35,
+
+              delay:
+                col * 25,
+
+              ease:
+                'Cubic.easeIn'
+            }
+          )
+        );
+      }
+    }
+
+    await Promise.all(
+      animations
+    );
+
+    this.setState(
+      endState
+    );
+  }
+
+  // =====================================
+  // BRIKKERNES FALD VED NEDERLAG
+  // =====================================
+
+  async playGameOverDrop() {
+    const animations = [];
+
+    for (
+      let row = 0;
+      row < this.rows;
+      row++
+    ) {
+      for (
+        let col = 0;
+        col < this.cols;
+        col++
+      ) {
+        const tile =
+          this.tileViews
+            [row]
+            [col];
+
+        if (
+          !tile
+        ) {
+          continue;
+        }
+
+        animations.push(
+          this.tween(
+            tile,
+            {
+              /*
+               * Flyt tilen langt ned.
+               *
+               * Så snart den forlader
+               * board-masken, bliver den
+               * usynlig.
+               */
+              y:
+                tile.y +
+                600,
+
+              duration:
+                450 +
+                row * 25,
+
+              delay:
+                col * 18,
+
+              ease:
+                'Cubic.easeIn'
+            }
+          )
+        );
+      }
+    }
+
+    await Promise.all(
+      animations
+    );
+  }
+
+  // =====================================
+  // HJÆLPEFUNKTIONER
+  // =====================================
 
   updateTilePositionData(
     tile,
     row,
     col
   ) {
-    tile.gridRow = row;
-    tile.gridCol = col;
+    tile.gridRow =
+      row;
+
+    tile.gridCol =
+      col;
   }
 
-  getUniqueMatchCells(matches) {
+  getUniqueMatchCells(
+    matches
+  ) {
     const map =
       new Map();
 
-    for (const match of matches) {
-      for (const cell of match.cells) {
+    for (
+      const match
+      of matches
+    ) {
+      for (
+        const cell
+        of match.cells
+      ) {
         map.set(
           `${cell.row},${cell.col}`,
           cell
@@ -971,22 +1527,32 @@ export default class Match3Board {
     );
   }
 
-  tween(targets, config) {
-    return new Promise(resolve => {
-      this.scene.tweens.add({
-        targets,
-        ...config,
-        onComplete: resolve
-      });
-    });
+  tween(
+    targets,
+    config
+  ) {
+    return new Promise(
+      resolve => {
+        this.scene.tweens.add({
+          targets,
+          ...config,
+          onComplete:
+            resolve
+        });
+      }
+    );
   }
 
-  pause(milliseconds) {
-    return new Promise(resolve => {
-      this.scene.time.delayedCall(
-        milliseconds,
-        resolve
-      );
-    });
+  pause(
+    milliseconds
+  ) {
+    return new Promise(
+      resolve => {
+        this.scene.time.delayedCall(
+          milliseconds,
+          resolve
+        );
+      }
+    );
   }
 }
