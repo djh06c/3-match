@@ -62,6 +62,37 @@ export default class MainScene extends Phaser.Scene {
     );
 
     // =====================================
+    // AUDIO
+    // =====================================
+
+    this.load.audio('matchSound', '/assets/audio/match.wav');
+    this.load.audio('hitSound', '/assets/audio/8bitPunch.wav');
+    this.load.audio('WrongSwapSound', '/assets/audio/swapWrong.wav');
+    this.load.audio('BobDMG', '/assets/audio/getHit.wav');
+    this.load.audio('DeadlineClock', '/assets/audio/clock');
+
+    //custom lyde pr enemy
+    
+for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ?? {})) {
+    const sounds = Array.isArray(soundConfig)
+        ? soundConfig
+        : [soundConfig];
+
+    sounds.forEach((sound, index) => {
+        const path = typeof sound === 'string'
+            ? sound
+            : sound.path;
+
+        const key = `${this.encounterId}_${soundName}_${index}`;
+
+        if (!this.cache.audio.exists(key)) {
+            this.load.audio(key, path);
+        }
+    });
+}
+
+
+    // =====================================
     // BAGGRUNDE
     // =====================================
 
@@ -135,6 +166,45 @@ export default class MainScene extends Phaser.Scene {
       }
     }
   }
+
+    //======================================
+    // SOUND HANDLER
+    //======================================
+
+    playEnemySounds(soundName) {
+    const soundConfig = this.enemyConfig.sounds?.[soundName];
+
+    if (!soundConfig) {
+        return;
+    }
+
+    const sounds = Array.isArray(soundConfig)
+        ? soundConfig
+        : [soundConfig];
+
+    sounds.forEach((sound, index) => {
+        const delay = typeof sound === 'string'
+            ? 0
+            : (sound.delay ?? 0);
+
+        const key = `${this.encounterId}_${soundName}_${index}`;
+
+        const playSound = () => {
+            if (this.cache.audio.exists(key)) {
+                this.sound.play(key, {
+                    volume: 0.8
+                });
+            }
+        };
+
+        if (delay > 0) {
+            this.time.delayedCall(delay, playSound);
+        } else {
+            playSound();
+        }
+    });
+  }
+
 
   create() {
     const width = this.scale.width;
@@ -773,29 +843,43 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  
   // =====================================
   // KAMPSTART OG FJENDENS INTRODUKTION
   // =====================================
   async startEncounter() {
     const readyState = this.enemyConfig.introReadTime ? 'ENCOUNTER_INTRO' : 'IDLE';
     const spawn = this.enemyConfig.animations.spawn;
+
     if (spawn) {
       const spawnFinished = new Promise(resolve => {
         this.enemy.once(`animationcomplete-${spawn.key}`, () => {
           this.enemy.play(this.enemyConfig.animations.idle.key);
           resolve();
         });
+
+        // Afspil fjendens spawn-lyd
+        this.playEnemySounds('spawn');
+
+        // Start spawn-animationen
         this.enemy.play(spawn.key);
       });
 
       // Tile drop must not unlock input while the enemy is still spawning.
-      await Promise.all([spawnFinished, this.board.playInitialDrop('ENCOUNTER_INTRO')]);
+      await Promise.all([
+        spawnFinished,
+        this.board.playInitialDrop('ENCOUNTER_INTRO')
+      ]);
+
       if (this.battleWon || this.battleLost || !this.scene.isActive()) return;
+
       this.board.setState(readyState);
     } else {
       await this.board.playInitialDrop(readyState);
     }
+
     this.showEnemyDialogue('intro');
+
     if (this.enemyConfig.introReadTime) {
       this.time.delayedCall(this.enemyConfig.introReadTime, () => {
         if (!this.battleWon && !this.battleLost) {
@@ -804,6 +888,7 @@ export default class MainScene extends Phaser.Scene {
       });
     }
   }
+
 
   // =====================================
   // AI-KNAP OG MISTANKEBJÆLKE
@@ -1182,10 +1267,16 @@ export default class MainScene extends Phaser.Scene {
 
     this.playPlayerAttackAnimation();
 
-    // Enemy takes damage
-    this.damageEnemy(
-      this.turnDamage
-    );
+    this.damageEnemy(this.turnDamage);
+
+    if (
+        this.turnDamage > 0 &&
+        this.cache.audio.exists('hitSound')
+    ) {
+        this.sound.play('hitSound', {
+            volume: 0.8
+        });
+    }
 
     if (this.EnemyHP <= 0) {
       this.winBattle();
@@ -2004,6 +2095,10 @@ export default class MainScene extends Phaser.Scene {
       finishAnimation
     );
 
+
+  // Afspil fjendens angrebslyd
+  this.playEnemySounds('attack');
+
     this.enemy.play(
       attackAnimation.key
     );
@@ -2224,6 +2319,11 @@ export default class MainScene extends Phaser.Scene {
       this.showGameWon();
       return;
     }
+
+    
+  // Afspil fjendens dødslyde med eventuelle forsinkelser
+  this.playEnemySounds('death');
+
 
     if (this.enemyHitTimer) {
       this.enemyHitTimer.remove();
@@ -3020,6 +3120,10 @@ export default class MainScene extends Phaser.Scene {
       );
 
     this.updatePlayerHealthBar();
+
+    this.sound.play('BobDMG', {
+      volume: 0.8
+    });
 
     this.showPlayerMoraleLoss(
       amount

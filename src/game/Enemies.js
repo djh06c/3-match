@@ -12,6 +12,22 @@ const enemies = {
     maxHP: 100,
     baseDamage: 4,
     damageIncrease: 1,
+
+  sounds: {
+    attack: '/assets/audio/joblinYap.mp3',
+
+    death: [
+        {
+            path: '/assets/audio/JoblinPetrify.wav',
+            delay: 500
+        },
+        {
+            path: '/assets/audio/JoblinCrumble.wav',
+            delay: 1200
+        }
+    ]
+},
+
     abilities: [
       {
         id: 'unexpectedFollowUp',
@@ -74,6 +90,22 @@ const enemies = {
     maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
+
+    sounds: {
+
+      spawn: '/assets/audio/cardboard.wav',
+
+      attack: 
+      {
+        path: '/assets/audio/mimicAtt.wav',
+        delay: 500
+      },
+      death: {
+        path: '/assets/audio/mimicDeath.wav',
+        delay: 500
+      },
+  },
+
     abilities: [
       {
         id: 'weakToOrganisation',
@@ -121,6 +153,14 @@ const enemies = {
   deadlineDemon: {
     id: 'deadlineDemon',
     name: 'DEADLINE DEMON',
+
+    sounds: {
+      attack: '/assets/audio/clock.wav',
+      death: [
+       '/assets/audio/doomBell.mp3',
+       '/assets/audio/doomSand.wav'
+      ]
+    },
     abilities: [
       {
         id: 'risingExpectations',
@@ -151,7 +191,7 @@ const enemies = {
       idle: { key: 'deadline-demon-idle', start: 0, end: 3, frameRate: 4, repeat: -1 },
       attack: { key: 'deadline-demon-attack', start: 0, end: 13, frameRate: 10, repeat: 0 },
       hit: { key: 'deadline-demon-hit', start: 0, end: 4, frameRate: 10, repeat: 0 },
-      death: { key: 'deadline-demon-death', start: 0, end: 24, frameRate: 10, repeat: 0 }
+      death: { key: 'deadline-demon-death', start: 0, end: 22, frameRate: 10, repeat: 0 }
     },
     dialogue: {
       intro: ['This task belonged to the previous hire. It became yours when you signed the contract.'],
@@ -223,6 +263,37 @@ const enemies = {
     maxHP: 100,
     baseDamage: 5,
     damageIncrease: 0,
+
+    sounds: {
+
+      spawn: [
+      {
+        path: '/assets/audio/printoSpawn2.wav',
+        delay: 0
+      },
+      {
+        path: '/assets/audio/printoSpawn1.wav',
+        delay: 1000
+      }
+      ],
+    attack: 
+    {
+      path: '/assets/audio/printoFart.wav',
+      delay: 1000
+    },
+
+    death: [
+        {
+            path: '/assets/audio/printoExpl.wav',
+            delay: 1100
+        },
+        {
+            path: '/assets/audio/printoShock.wav',
+            delay: 500
+        }
+    ]
+},
+
     abilities: [
       { 
         id: 'inkSmudge',

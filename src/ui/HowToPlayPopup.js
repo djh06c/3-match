@@ -7,7 +7,7 @@ export default class HowToPlayPopup {
         this.pages = [
             { image: 'tutorial1', text: 'Swap adjacent tiles to creates matches of 3 or more' },
             { image: 'tutorial2', text: 'Every time you make a match, you damage the enemy based on the match - the bigger the match, the more damage' },
-            { image: 'tutorial3', text: 'Match three or more identical tiles.' },
+            { image: 'tutorial3', text: 'Match three or more identical poopies.' },
             { image: 'tutorial4', text: 'Matches deal damage to enemies.' },
             { image: 'tutorial5', text: 'Larger matches deal more damage.' },
             { image: 'tutorial6', text: 'Chain reactions create additional damage.' },
