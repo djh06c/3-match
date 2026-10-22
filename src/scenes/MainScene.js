@@ -1452,7 +1452,7 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
     this.playPlayerAttackAnimation();
 
-    // Registrer damage til campaign score
+    // Tæl hele angrebet, inklusive overkill, én gang til campaign score.
     this.campaignScore.damage += this.turnDamage;
 
     // Enemy tager skade
@@ -1467,13 +1467,6 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
         volume: 0.8
       });
     }
-
-    // Enemy takes damage
-    // Tæl hele angrebet før HP begrænses, så overkill også giver point.
-    this.campaignScore.damage += this.turnDamage;
-    this.damageEnemy(
-      this.turnDamage
-    );
 
     if (bannedTileDamage > 0) {
       this.damagePlayer(bannedTileDamage * 0.5);
