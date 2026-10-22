@@ -153,6 +153,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.playerMoveCount = 0;
     this.enemyAttackCount = 0;
+    this.banRoundsRemaining = 0;
     this.lastMoveTotalMatched = 0;
     this.freeMoveTilesMatched = 0;
     this.deadlineAbility = (this.enemyConfig.abilities ?? []).find(ability =>
@@ -193,7 +194,6 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTypingTimer = null;
     this.bobTypingTimer = null;
     this.playerLowMoraleShown = false;
-    this.enemyLowHPShown = false;
 
     // =====================================
     // BOBS REPLIKKER
@@ -806,7 +806,7 @@ export default class MainScene extends Phaser.Scene {
     this.showEnemyDialogue('intro');
     if (this.aiPowerHint) {
       this.aiPowerHint.setVisible(true);
-      this.aiButton.setStrokeStyle(3, 0xffff00);
+      this.aiButton.setTint(0xffff00);
     }
     if (this.enemyConfig.introReadTime) {
       this.time.delayedCall(this.enemyConfig.introReadTime, () => {
@@ -837,8 +837,8 @@ export default class MainScene extends Phaser.Scene {
     this.supervisorActive = false;
     this.suspicionRecovered = false;
 
-    const button = this.add.rectangle(75, 620, 100, 60, 0x333333)
-      .setStrokeStyle(2, 0xffffff).setDepth(20);
+    const button = this.add.image(75, 620, 'aiChip')
+      .setDisplaySize(90, 90).setDepth(20);
     this.aiButton = button;
     this.aiPowerHint = null;
     if (this.encounterId === 'printosaurus' && this.aiBoosters.unlocked) {
@@ -847,14 +847,11 @@ export default class MainScene extends Phaser.Scene {
         align: 'center', wordWrap: { width: 140 }
       }).setOrigin(0.5).setDepth(22).setVisible(false);
     }
-    this.add.image(75, 611, 'aiChip').setDisplaySize(28, 28).setDepth(21);
-    this.aiButtonText = this.add.text(75, 638, this.aiBoosters.unlocked ? 'AI' : 'AI LOCKED', {
-      fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
-    }).setOrigin(0.5).setDepth(21);
-
     if (this.aiBoosters.unlocked) {
       button.setInteractive({ useHandCursor: true });
       button.on('pointerdown', () => this.openAIMenu());
+    } else {
+      button.setAlpha(0.4);
     }
 
     this.add.text(75, 295, 'SUPERVISOR', {
@@ -880,7 +877,7 @@ export default class MainScene extends Phaser.Scene {
     if (!this.aiPowerHint) return;
     this.aiPowerHint.destroy();
     this.aiPowerHint = null;
-    this.aiButton.setStrokeStyle(2, 0xffffff);
+    this.aiButton.clearTint();
   }
 
   // =====================================
@@ -982,19 +979,14 @@ export default class MainScene extends Phaser.Scene {
     let bestMove = null;
     let bestScore = 0;
 
-    // Try each adjacent swap and restore it. Compare immediate matches, not random refills.
+    // Medregn kaskader fra eksisterende brikker uden at gætte nye brikker.
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
         for (const [otherRow, otherCol] of [[row, col + 1], [row + 1, col]]) {
           if (!grid.inBounds(otherRow, otherCol)) continue;
-          grid.swapCells(row, col, otherRow, otherCol);
-          const matches = grid.findMatches();
-          const valid = grid.matchesContainEitherCell(matches, row, col, otherRow, otherCol);
-          const cells = new Set(matches.flatMap(match =>
-            match.cells.map(cell => `${cell.row},${cell.col}`)));
-          grid.swapCells(row, col, otherRow, otherCol);
-          if (valid && cells.size > bestScore) {
-            bestScore = cells.size;
+          const score = grid.scoreSwapWithCascades(row, col, otherRow, otherCol);
+          if (score > bestScore) {
+            bestScore = score;
             bestMove = [{ row, col }, { row: otherRow, col: otherCol }];
           }
         }
@@ -1073,11 +1065,10 @@ export default class MainScene extends Phaser.Scene {
 
     this.supervisorActive = true;
     this.hideAIPowerHint();
-    this.EnemyMaxHP += 50;
     this.EnemyHP = this.EnemyMaxHP;
     this.updateEnemyHealthBar();
     this.aiButton.disableInteractive();
-    this.aiButtonText.setText('AI DISABLED');
+    this.aiButton.setAlpha(0.4);
 
     const message = this.add.text(this.scale.width / 2, 80,
       'SUPERVISOR\nWe have noticed a huge incline in your effectiveness and we would like to see you do it live.', {
@@ -1220,6 +1211,15 @@ export default class MainScene extends Phaser.Scene {
         result
       );
 
+    // Kun skaden fra den forbudte briktype giver tilbageslag, ikke AI-bonussen.
+    const bannedTileDamage = this.board.bannedTileType == null ? 0 : damageResult.breakdown
+      .filter(match => match.tileValue === this.board.bannedTileType)
+      .reduce((total, match) => total + match.damage, 0);
+    if (!freeMove && this.board.bannedTileType != null) {
+      this.banRoundsRemaining--;
+      if (this.banRoundsRemaining <= 0) this.board.setBannedTile(null);
+    }
+
     if (freeMove) {
       damageResult.totalDamage += 3;
       damageResult.breakdown.push({
@@ -1250,6 +1250,14 @@ export default class MainScene extends Phaser.Scene {
       this.turnDamage
     );
 
+    if (bannedTileDamage > 0) {
+      this.damagePlayer(bannedTileDamage * 0.5);
+      if (this.PlayerHP <= 0) {
+        this.loseBattle();
+        return;
+      }
+    }
+
     if (this.EnemyHP <= 0) {
       this.winBattle();
 
@@ -1258,17 +1266,6 @@ export default class MainScene extends Phaser.Scene {
 
     if (!result.hasValidMoves) {
       return;
-    }
-
-    // Prefer the strongest reaction when a move qualifies for several events.
-    if (result.chains > 1) {
-      this.showEnemyDialogue('combo');
-    } else if (this.turnDamage >= 15) {
-      this.showEnemyDialogue('greatMove');
-    } else if (this.turnDamage >= 12) {
-      this.showEnemyDialogue('goodMove');
-    } else {
-      this.showEnemyDialogue('normalMove');
     }
 
     // A free AI swap deals damage, then returns input without an enemy turn.
@@ -1406,6 +1403,7 @@ export default class MainScene extends Phaser.Scene {
         totalDamage += damage;
 
         breakdown.push({
+          tileValue: match.tileValue,
           chain:
             chainData.chain,
 
@@ -1796,7 +1794,10 @@ export default class MainScene extends Phaser.Scene {
     this.playerRoundActions = [];
     this.enemyTurnDamage = 0;
 
-    if (this.enemyAbility?.type === 'doubleAttack') {
+    const banAbility = abilities.find(ability => ability.type === 'banTiles');
+    if (banAbility && (this.enemyAttackCount + 1) % banAbility.everyTurns === 0) {
+      this.showEnemyDialogue('ban');
+    } else if (this.enemyAbility?.type === 'doubleAttack') {
       // Reaching the threshold sooner locks in lower damage for the rest of the fight.
       if (this.enemyAbility.stopDamageScaling) {
         this.fixedEnemyDamage = normalDamage;
@@ -1807,10 +1808,6 @@ export default class MainScene extends Phaser.Scene {
       this.statusText.setText(`${this.enemyConfig.name}: DOUBLE ATTACK!`);
     } else if (this.enemyAbility?.type === 'copyRound') {
       this.showEnemyDialogue(this.enemyAbility.dialogueEvent);
-    } else if (!this.enemyLowHPShown && this.EnemyHP <= this.EnemyMaxHP * 0.3
-      && this.enemyConfig.dialogue?.enemyLowHP?.length) {
-      this.enemyLowHPShown = true;
-      this.showEnemyDialogue('enemyLowHP');
     } else {
       this.showEnemyDialogue('enemyAction');
     }
@@ -1833,6 +1830,10 @@ export default class MainScene extends Phaser.Scene {
     }
 
     const index = Math.floor(Math.random() * lines.length);
+    if (event === 'ban') {
+      this.board.setBannedTile(index);
+      this.banRoundsRemaining = 2;
+    }
     let message = lines[index];
     if (this.deadlineAbility && event === 'enemyAction'
       && this.deadlineRequirement > this.announcedDeadlineRequirement) {

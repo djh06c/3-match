@@ -44,7 +44,7 @@ export default class ProgressionScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5);
 
-    if (!campaignComplete) {
+    if (!campaignComplete && !isBreak) {
       this.add.text(width / 2, height / 2 - 85,
       `MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`, {
         fontSize: '20px',
@@ -57,6 +57,27 @@ export default class ProgressionScene extends Phaser.Scene {
     // PAUSE EFTER JOBLIN, PAPKASSEMIMIK OG NECROMANAGER
     // =====================================
     if (isBreak) {
+      // Samme overblik som i HR, inden spilleren vælger sin pause.
+      const morale = this.progression.playerMorale;
+      const maxMorale = this.progression.playerMaxMorale;
+      const suspicion = this.registry.get('aiBoosters')?.suspicion ?? 0;
+      this.add.rectangle(12, 12, 210, 108, 0x222222, 0.95).setOrigin(0).setDepth(10);
+      this.add.text(24, 22, `MORALE: ${morale} / ${maxMorale}`, {
+        fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+      }).setDepth(11);
+      this.add.rectangle(24, 47, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+      const moraleBar = this.add.rectangle(24, 47, 180, 12, 0x55cc77)
+        .setOrigin(0, 0.5).setDepth(11);
+      moraleBar.displayWidth = 180 * Phaser.Math.Clamp(morale / maxMorale, 0, 1);
+
+      this.add.text(24, 68, `SUSPICION: ${suspicion} / 100`, {
+        fontFamily: 'Arial', fontSize: '16px', color: '#ffffff'
+      }).setDepth(11);
+      this.add.rectangle(24, 97, 180, 12, 0x444444).setOrigin(0, 0.5).setDepth(10);
+      const suspicionBar = this.add.rectangle(24, 97, 180, 12, 0xffaa33)
+        .setOrigin(0, 0.5).setDepth(11);
+      suspicionBar.displayWidth = 180 * Phaser.Math.Clamp(suspicion / 100, 0, 1);
+
       this.add.text(width / 2, height / 2 - 30,
         'Where would you like to go?', {
           fontSize: '18px',

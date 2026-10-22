@@ -345,6 +345,7 @@ export default class Match3Board {
       );
 
       tile.icon = icon;
+      if (value === this.bannedTileType) icon.setTint(0x777777).setAlpha(0.5);
 
       tile.add(
         icon
@@ -790,6 +791,18 @@ export default class Match3Board {
   // MARKERING AF VALGTE BRIKKER
   // =====================================
 
+  setBannedTile(tileType) {
+    this.bannedTileType = tileType;
+    for (const row of this.tileViews) {
+      for (const tile of row) {
+        if (!tile?.icon) continue;
+        tile.icon.clearTint().setAlpha(1);
+        if (tile.tileValue === tileType) tile.icon.setTint(0x777777).setAlpha(0.5);
+      }
+    }
+    this.updateSelectionVisuals();
+  }
+
   updateSelectionVisuals() {
     for (
       let row = 0;
@@ -826,6 +839,8 @@ export default class Match3Board {
 
           tile.ink
             ? 0x000000
+            : tile.tileValue === this.bannedTileType
+            ? 0x777777
             : selected
             ? 0xffff00
             : this.tileColors[

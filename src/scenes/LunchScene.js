@@ -142,7 +142,7 @@ export default class LunchScene extends Phaser.Scene {
     // =====================================
     const powers = [
       { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +15 Suspicion per use.' },
-      { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. Suspicion = healing.' }
+      { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. +10 Suspicion.' }
     ];
     if (thirdVisit) {
       powers.push({ id: 'tileSwap', uses: 1, title: 'TILE SWAP', text: 'Drag any tile onto another to swap them.\nUses your turn. +20 Suspicion.', keepTurn: false });

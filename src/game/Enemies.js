@@ -46,12 +46,7 @@ const enemies = {
     dialogue: {
       intro: ['So... tell me a little about yourself.'],
       badMove: ['Interesting strategy.', 'Are you nervous?'],
-      normalMove: ['Okay.', 'Noted.', "We will circle back to that."],
-      goodMove: ['You came prepared.', 'That looks good on your CV.'],
-      greatMove: ['Please stop exceeding expectations.'],
-      combo: ['Multitasking. Management will love you.'],
       playerLowMorale: ['Are you good under pressure?'],
-      enemyLowHP: ['One final question. Why should we hire you?'],
       unexpectedFollowUp: ['One more thing. This role combines three full-time positions.'],
       enemyAction: [
         'Where do you see yourself in 45 years?',
@@ -105,12 +100,7 @@ const enemies = {
     dialogue: {
       intro: ['Special delivery. Please sign with your remaining morale.'],
       badMove: ['Return to sender.'],
-      normalMove: ['Contents may have shifted.'],
-      goodMove: ['Handle with care!'],
-      greatMove: ['That was not covered by shipping insurance.'],
-      combo: ['One package at a time, please!'],
       playerLowMorale: ['You look ready to be boxed up.'],
-      enemyLowHP: ['Some assembly required.'],
       enemyAction: ['Your delivery window is now.', 'Unexpected item in the office area.']
     }
   },
@@ -170,6 +160,8 @@ const enemies = {
   ceoOverlord: {
     id: 'ceoOverlord',
     name: 'CEO-VERLORD',
+    abilities: [{ type: 'banTiles', everyTurns: 3,
+      description: 'Every third round, CEO-VERLORD bans a random tile type for your next two rounds. Free AI moves do not shorten the ban. Grey tiles can still be moved and matched, but you lose Morale equal to 50% of the damage dealt by that tile type, including cascades.' }],
     hideAfterDeath: true,
     maxHP: 100,
     baseDamage: 5,
@@ -179,7 +171,7 @@ const enemies = {
     victoryText: 'CEO DEFEATED!',
     textures: {
       idle: 'CEOIdle', spawn: 'CEOOpening',
-      attack: 'CEOAttack', hit: 'CEOAttack', death: 'CEODeath'
+      attack: 'CEOAttack', hit: 'CEOIdle', death: 'CEODeath'
     },
     assets: [
       { key: 'CEOIdle', path: import.meta.env.BASE_URL + 'assets/mobs/CEOverlord/Red Rift Portal - IDLE.png', frameWidth: 64, frameHeight: 64 },
@@ -189,11 +181,20 @@ const enemies = {
     ],
     animations: {
       idle: { key: 'ceo-idle', start: 0, end: 5, frameRate: 8, repeat: -1 },
-      spawn: { key: 'ceo-opening', start: 0, end: 21, frameRate: 10, repeat: 0 },
+      hit: { key: 'ceo-hit', start: 0, end: 5, frameRate: 8, repeat: -1 },
+      spawn: { key: 'ceo-opening', start: 0, end: 20, frameRate: 10, repeat: 0 },
       attack: { key: 'ceo-attack', start: 0, end: 23, frameRate: 10, repeat: 0 },
       death: { key: 'ceo-death', start: 0, end: 15, frameRate: 10, repeat: 0, reverse: true }
     },
     dialogue: {
+      ban: [
+        'No more coffee breaks!',
+        'No emailing your friends when at work!',
+        'Don\'t use your laptop unproductively!',
+        'Are you taking notes or doodling?',
+        'Stop using your phone on company time!',
+        'Time at work doesn\'t go faster by looking at the clock!'
+      ],
       enemyAction: [
         'I won\'t burn the next one.',
         'I can make these papers permanent.',
@@ -300,12 +301,7 @@ const enemies = {
     dialogue: {
       intro: ['PC LOAD LETTER. Good luck with that.'],
       badMove: ['Paper jam. Try again.'],
-      normalMove: ['Processing...'],
-      goodMove: ['Unexpected productivity detected.'],
-      greatMove: ['Please contact IT.'],
-      combo: ['Too many jobs in the print queue!'],
       playerLowMorale: ['Low toner. Lower morale.'],
-      enemyLowHP: ['Have you tried turning me off and on?'],
       enemyAction: ['Out of paper.', 'Your document is stuck in the queue.'],
       defeat: ['Your document has finally printed.']
     }

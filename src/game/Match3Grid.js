@@ -462,7 +462,7 @@ export default class Match3Grid {
   // FALD OG GENOPFYLDNING
   // =====================================
 
-  collapseAndRefill(matches) {
+  collapseAndRefill(matches, refill = true) {
     const matchedCells =
       new Set();
 
@@ -548,6 +548,8 @@ export default class Match3Grid {
       // VÆGTET GENOPFYLDNING
       // =====================================
 
+      if (!refill) continue;
+
       for (
         let row = writeRow;
         row >= 0;
@@ -581,6 +583,22 @@ export default class Match3Grid {
   // =====================================
   // KONTROL AF MULIGE TRÆK
   // =====================================
+
+  // Tæl sikre match og kaskader på en kopi uden tilfældige nye brikker.
+  scoreSwapWithCascades(row, col, otherRow, otherCol) {
+    const simulation = new Match3Grid(this.rows, this.cols, this.colorCount);
+    simulation.cells = this.cells.map(cells => [...cells]);
+    if (!simulation.trySwap(row, col, otherRow, otherCol)) return 0;
+
+    let score = 0;
+    let matches = simulation.findMatches();
+    while (matches.length > 0) {
+      const changes = simulation.collapseAndRefill(matches, false);
+      score += changes.removed.length;
+      matches = simulation.findMatches();
+    }
+    return score;
+  }
 
   hasValidMoves() {
     for (
