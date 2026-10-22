@@ -35,6 +35,32 @@ export default class ProgressionScene extends Phaser.Scene {
     };
     const nextEncounterId = nextEncounters[this.progression.completedEncounterId];
 
+    if (campaignComplete) {
+      const score = this.registry.get('campaignScore')
+        ?? { damage: 0, suspicionGained: 0, interventions: 0 };
+      const suspicionPenalty = score.suspicionGained * 3;
+      const interventionPenalty = score.interventions * 40;
+      const retries = score.retries ?? 0;
+      const retryPenalty = retries * 10;
+      const easterEggsFound = Number(Boolean(score.fruitFound)) + Number(Boolean(score.boxFound));
+      const easterEggBonus = easterEggsFound * 10;
+      const remainingMoraleBonus = this.progression.playerMorale;
+      const finalScore = score.damage - suspicionPenalty - interventionPenalty - retryPenalty
+        + easterEggBonus + remainingMoraleBonus;
+      this.add.text(width / 2, height / 2 - 50, `FINAL SCORE: ${finalScore}`, {
+        fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffff88'
+      }).setOrigin(0.5);
+      this.add.text(width / 2, height / 2 + 35,
+        `Damage dealt: +${score.damage}\nSuspicion gained: ${score.suspicionGained} (-${suspicionPenalty})`
+        + `\nSupervisor interventions: ${score.interventions} (-${interventionPenalty})`
+        + `\nRetries: ${retries} (-${retryPenalty})`
+        + `\nEaster eggs interacted with: ${easterEggsFound}/2 (+${easterEggBonus})`
+        + `\nRemaining Morale: +${remainingMoraleBonus}`, {
+          fontFamily: 'Arial', fontSize: '18px', color: '#edf1eb',
+          align: 'center', lineSpacing: 10
+        }).setOrigin(0.5);
+    }
+
     this.add.text(width / 2, height / 2 - 140,
       campaignComplete ? 'Thank you for playing' : isBreak ? 'TIME FOR A BREAK' : 'ENCOUNTER COMPLETE', {
       fontSize: '30px',

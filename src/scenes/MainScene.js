@@ -28,6 +28,11 @@ export default class MainScene extends Phaser.Scene {
       import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/Inkstain.png');
     this.load.image('aiChip',
       import.meta.env.BASE_URL + 'assets/icons/Chip - AI.png');
+    for (let stage = 0; stage < 4; stage++) {
+      this.load.spritesheet(`supervisor-eye-${stage}`,
+        import.meta.env.BASE_URL + `assets/mobs/Extras/Supervisor_${stage * 25}-${(stage + 1) * 25}.png`,
+        { frameWidth: 64, frameHeight: 64 });
+    }
     // =====================================
     // IKONER TIL MATCH-3
     // =====================================
@@ -146,6 +151,11 @@ export default class MainScene extends Phaser.Scene {
 
     this.battleWon = false;
     this.battleLost = false;
+
+    this.campaignScore = this.registry.get('campaignScore')
+      ?? { damage: 0, suspicionGained: 0, interventions: 0, retries: 0, fruitFound: false, boxFound: false };
+    this.startingCampaignScore = { ...this.campaignScore };
+    this.registry.set('campaignScore', this.campaignScore);
 
     // Scene instances are reused when TRY AGAIN restarts combat.
     this.gameWonText = null;
@@ -837,14 +847,15 @@ export default class MainScene extends Phaser.Scene {
     this.aiUsesRemaining = { bestMove: 2, moraleBoost: 3, tileSwap: 1 };
     this.freeAIMove = false;
     this.supervisorActive = false;
+    this.supervisorDialogueActive = false;
     this.suspicionRecovered = false;
 
-    const button = this.add.image(75, 620, 'aiChip')
+    const button = this.add.image(90, 620, 'aiChip')
       .setDisplaySize(90, 90).setDepth(20);
     this.aiButton = button;
     this.aiPowerHint = null;
     if (this.encounterId === 'printosaurus' && this.aiBoosters.unlocked) {
-      this.aiPowerHint = this.add.text(75, 565, 'click here to use your powers', {
+      this.aiPowerHint = this.add.text(90, 565, 'click here to use your powers', {
         fontSize: '14px', color: '#ffff00', fontFamily: 'Arial',
         align: 'center', wordWrap: { width: 140 }
       }).setOrigin(0.5).setDepth(22).setVisible(false);
@@ -856,20 +867,49 @@ export default class MainScene extends Phaser.Scene {
       button.setAlpha(0.4);
     }
 
-    this.add.text(75, 295, 'SUPERVISOR', {
+    this.add.text(90, 295, 'SUPERVISOR', {
       fontSize: '12px', color: '#ffffff', fontFamily: 'Arial'
     }).setOrigin(0.5).setDepth(20);
-    this.add.rectangle(25, 318, 100, 12, 0x333333).setOrigin(0, 0.5).setDepth(20);
-    this.suspicionBar = this.add.rectangle(25, 318, 100, 12, 0xffaa33)
+    this.add.rectangle(40, 318, 100, 12, 0x333333).setOrigin(0, 0.5).setDepth(20);
+    this.suspicionBar = this.add.rectangle(40, 318, 100, 12, 0xffaa33)
       .setOrigin(0, 0.5).setDepth(21);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
-    this.suspicionText = this.add.text(75, 340,
+    this.suspicionText = this.add.text(90, 340,
       `Suspicion: ${this.aiBoosters.suspicion}/100`, {
         fontSize: '11px', color: '#ffffff', fontFamily: 'Arial'
       }).setOrigin(0.5).setDepth(20);
+    for (let stage = 0; stage < 4; stage++) {
+      const key = `supervisor-eye-${stage}`;
+      if (!this.anims.exists(key)) {
+        this.anims.create({
+          key, frames: this.anims.generateFrameNumbers(key, { start: 0, end: 2 }),
+          frameRate: 6, repeat: 0
+        });
+      }
+    }
+    this.supervisorEye = this.add.sprite(90, 420, 'supervisor-eye-0', 0)
+      .setScale(2).setDepth(20);
+    this.supervisorEyeStage = 0;
+    this.supervisorEyeHolding = false;
     if (this.aiBoosters.suspicion >= 100) {
       this.startSupervisorIntervention();
+    } else {
+      this.updateSupervisorEye(this.aiBoosters.suspicion, false);
     }
+  }
+
+  // =====================================
+  // SUPERVISORENS ØJE OG MISTANKETRIN
+  // =====================================
+  updateSupervisorEye(suspicion, animate = true) {
+    if (this.supervisorEyeHolding) return;
+    const stage = Math.min(4, Math.floor(suspicion / 25));
+    if (stage === this.supervisorEyeStage) return;
+    this.supervisorEyeStage = stage;
+    this.supervisorEye.stop();
+    const key = `supervisor-eye-${Math.max(0, stage - 1)}`;
+    this.supervisorEye.setTexture(key, stage === 0 ? 0 : 2);
+    if (animate && stage > 0) this.supervisorEye.play(key);
   }
 
   // =====================================
@@ -910,7 +950,7 @@ export default class MainScene extends Phaser.Scene {
         : healing
         ? 'Recover 10 Morale. Keep your turn.'
         : 'Finds and automatically plays the best available match.\nAdds +3 damage and keeps your turn.';
-      const suspicionCost = swapping ? 20 : healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 15;
+      const suspicionCost = swapping ? 15 : healing ? Math.min(10, this.PlayerMaxHP - this.PlayerHP) : 20;
       const useButton = roundedPanel(this, 400, y, 552, 95)
         .setInteractive({ useHandCursor: true });
       useButton.on('pointerover', () => useButton.setFillStyle(0x3b5057));
@@ -970,7 +1010,7 @@ export default class MainScene extends Phaser.Scene {
     });
     this.board.beginManualSwap(() => {
       cancel.destroy();
-      this.finishAIPowerUse(20);
+      this.finishAIPowerUse(15);
     });
   }
 
@@ -1015,15 +1055,22 @@ export default class MainScene extends Phaser.Scene {
         .setFillStyle(0xffffff, 0).setStrokeStyle(4, 0xffff00));
     }
 
-    this.finishAIPowerUse(15);
+    this.finishAIPowerUse(20);
     this.board.setState('AI_PREVIEW');
     this.statusText.setText('AI is playing a free move!');
     this.time.delayedCall(700, () => {
-      if (this.battleWon || this.battleLost) return;
-      this.freeAIMove = true;
-      this.board.setState('IDLE');
-      this.board.performSwap(bestMove[0].row, bestMove[0].col,
-        bestMove[1].row, bestMove[1].col);
+      const playMove = () => {
+        if (this.battleWon || this.battleLost) return;
+        this.freeAIMove = true;
+        this.board.setState('IDLE');
+        this.board.performSwap(bestMove[0].row, bestMove[0].col,
+          bestMove[1].row, bestMove[1].col);
+      };
+      if (this.supervisorDialogueActive) {
+        this.events.once('supervisor-dialogue-closed', playMove);
+      } else {
+        playMove();
+      }
     });
   }
 
@@ -1056,13 +1103,17 @@ export default class MainScene extends Phaser.Scene {
   finishAIPowerUse(suspicionCost) {
     this.aiPowerUsesRemaining--;
     this.aiUsesRemaining[this.aiBoosters.selectedPower] = this.aiPowerUsesRemaining;
-    this.aiBoosters.suspicion = Math.min(100, this.aiBoosters.suspicion + suspicionCost);
+    const previousSuspicion = this.aiBoosters.suspicion;
+    this.aiBoosters.suspicion = Math.min(100, previousSuspicion + suspicionCost);
+    this.campaignScore.suspicionGained += this.aiBoosters.suspicion - previousSuspicion;
     this.registry.set('aiBoosters', this.aiBoosters);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
     this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
     this.closeAIMenu();
     if (this.aiBoosters.suspicion >= 100) {
       this.startSupervisorIntervention();
+    } else {
+      this.updateSupervisorEye(this.aiBoosters.suspicion);
     }
   }
 
@@ -1073,19 +1124,68 @@ export default class MainScene extends Phaser.Scene {
     if (this.supervisorActive || this.battleWon || this.battleLost) return;
 
     this.supervisorActive = true;
+    this.campaignScore.interventions++;
+    this.updateSupervisorEye(100);
+    this.supervisorEyeHolding = true;
     this.hideAIPowerHint();
-    this.EnemyHP = this.EnemyMaxHP;
+    this.EnemyMaxHP += 25;
+    this.EnemyHP += (this.EnemyMaxHP - this.EnemyHP) * 0.25;
     this.updateEnemyHealthBar();
     this.aiButton.disableInteractive();
     this.aiButton.setAlpha(0.4);
 
-    const message = this.add.text(this.scale.width / 2, 80,
-      'SUPERVISOR\nWe have noticed a huge incline in your effectiveness and we would like to see you do it live.', {
-        fontSize: '16px', color: '#ffffff', backgroundColor: '#222222',
-        fontFamily: 'Arial', align: 'center', padding: { x: 12, y: 10 },
-        wordWrap: { width: 650 }
-      }).setOrigin(0.5).setDepth(55);
-    this.time.delayedCall(8000, () => message.destroy());
+    this.showSupervisorDialogue();
+  }
+
+  // =====================================
+  // SUPERVISORENS TALEBOBLE OG BEKRÆFTELSE
+  // =====================================
+  showSupervisorDialogue() {
+    this.supervisorDialogueActive = true;
+    this.board.resetPointerState();
+    const bubble = this.add.container(0, 0).setDepth(80);
+    const blocker = this.add.rectangle(400, 350, 800, 700, 0x000000, 0.2)
+      .setInteractive();
+    const tail = this.add.graphics();
+    tail.fillStyle(0x1d272f, 1);
+    tail.fillTriangle(148, 420, 170, 406, 170, 434);
+    const panel = roundedPanel(this, 380, 430, 430, 220, 0x1d272f);
+    const text = this.add.text(185, 340, 'SUPERVISOR\n', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb',
+      wordWrap: { width: 385 }, lineSpacing: 4
+    });
+    const ok = roundedPanel(this, 380, 510, 74, 32, 0x354b4b).setVisible(false);
+    const okLabel = this.add.text(380, 510, 'OK', {
+      fontFamily: 'Arial', fontSize: '16px', color: '#edf1eb'
+    }).setOrigin(0.5).setVisible(false);
+    bubble.add([blocker, tail, panel, text, ok, okLabel]);
+    const message = 'We have noticed a huge incline in your effectiveness and we would like to see you do it live.';
+    let characterCount = 0;
+    this.time.addEvent({
+      delay: 25, repeat: message.length - 1,
+      callback: () => {
+        characterCount++;
+        text.setText(`SUPERVISOR\n${message.slice(0, characterCount)}`);
+        if (characterCount === message.length) {
+          ok.setVisible(true).setInteractive({ useHandCursor: true });
+          okLabel.setVisible(true);
+        }
+      }
+    });
+    ok.on('pointerover', () => ok.setFillStyle(0x456361));
+    ok.on('pointerout', () => ok.setFillStyle(0x354b4b));
+    ok.once('pointerdown', () => {
+      bubble.destroy(true);
+      this.aiBoosters.suspicion = 50;
+      this.registry.set('aiBoosters', this.aiBoosters);
+      this.suspicionBar.displayWidth = 50;
+      this.suspicionText.setText('Suspicion: 50/100');
+      this.supervisorEyeHolding = false;
+      this.updateSupervisorEye(50);
+      this.board.resetPointerState();
+      this.supervisorDialogueActive = false;
+      this.events.emit('supervisor-dialogue-closed');
+    });
   }
 
   // =====================================
@@ -1099,6 +1199,7 @@ export default class MainScene extends Phaser.Scene {
     this.registry.set('aiBoosters', this.aiBoosters);
     this.suspicionBar.displayWidth = this.aiBoosters.suspicion;
     this.suspicionText.setText(`Suspicion: ${this.aiBoosters.suspicion}/100`);
+    this.updateSupervisorEye(this.aiBoosters.suspicion, false);
   }
 
   // =====================================
@@ -1255,6 +1356,8 @@ export default class MainScene extends Phaser.Scene {
     this.playPlayerAttackAnimation();
 
     // Enemy takes damage
+    // Tæl hele angrebet før HP begrænses, så overkill også giver point.
+    this.campaignScore.damage += this.turnDamage;
     this.damageEnemy(
       this.turnDamage
     );
@@ -2368,6 +2471,7 @@ export default class MainScene extends Phaser.Scene {
               this.enemy.setInteractive();
               this.enemy.once('pointerdown', () => {
                 if (this.resultTransitionActive) return;
+                this.campaignScore.boxFound = true;
                 this.enemy.disableInteractive();
                 this.enemy.playReverse(this.enemyConfig.animations.spawn.key);
                 const healedMorale = Math.min(this.enemyConfig.defeatClickMorale,
@@ -2831,6 +2935,10 @@ export default class MainScene extends Phaser.Scene {
         .setDepth(20);
 
     this.addResultButton(boardCenterX, boardCenterY + 75, 'TRY AGAIN', () => {
+      this.registry.set('campaignScore', {
+        ...this.startingCampaignScore,
+        retries: (this.startingCampaignScore.retries ?? 0) + 1
+      });
       this.registry.set('aiBoosters', { ...this.startingAIBoosters });
       this.scene.restart({
         encounterId: this.encounterId,

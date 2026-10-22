@@ -699,6 +699,9 @@ export default class Match3Board {
     if (manualSwap) {
       this.manualSwapCommit();
       this.manualSwapCommit = null;
+      if (this.scene.supervisorDialogueActive) {
+        await new Promise(resolve => this.scene.events.once('supervisor-dialogue-closed', resolve));
+      }
     }
     await this.animateSwap(
       tileA,

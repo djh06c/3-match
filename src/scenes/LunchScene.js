@@ -76,6 +76,10 @@ export default class LunchScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true, pixelPerfect: true });
 
       fruit.once('pointerdown', () => {
+        const score = this.registry.get('campaignScore')
+          ?? { damage: 0, suspicionGained: 0, interventions: 0, retries: 0, fruitFound: false, boxFound: false };
+        score.fruitFound = true;
+        this.registry.set('campaignScore', score);
         this.progression.playerMorale = Math.min(this.progression.playerMaxMorale,
           this.progression.playerMorale + 2);
         moraleText.setText(`MORALE: ${this.progression.playerMorale} / ${this.progression.playerMaxMorale}`);
@@ -152,11 +156,11 @@ export default class LunchScene extends Phaser.Scene {
     // VALG AF AI-EVNE
     // =====================================
     const powers = [
-      { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +15 Suspicion per use.' },
+      { id: 'bestMove', uses: 2, title: 'BEST MOVE', text: 'Finds and automatically plays\nthe best available match.\n+3 damage. +20 Suspicion per use.' },
       { id: 'moraleBoost', uses: 3, title: 'MORALE BOOST', text: '+10 Morale. +10 Suspicion.' }
     ];
     if (thirdVisit) {
-      powers.push({ id: 'tileSwap', uses: 1, title: 'TILE SWAP', text: 'Drag any tile onto another to swap them.\nUses your turn. +20 Suspicion.', keepTurn: false });
+      powers.push({ id: 'tileSwap', uses: 1, title: 'TILE SWAP', text: 'Drag any tile onto another to swap them.\nUses your turn. +15 Suspicion.', keepTurn: false });
     }
     const choiceButtons = [];
     const choiceLabels = [];
