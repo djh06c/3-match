@@ -76,26 +76,31 @@ export default class MainScene extends Phaser.Scene {
     this.load.audio('WrongSwapSound', '/assets/audio/swapWrong.wav');
     this.load.audio('BobDMG', '/assets/audio/getHit.wav');
     this.load.audio('DeadlineClock', '/assets/audio/clock');
+    //Musik
+    this.load.audio('musicIntro', '/assets/audio/music1.mp3');
+    this.load.audio('musicLoop', '/assets/audio/music2.mp3');
 
     //custom lyde pr enemy
     
-for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ?? {})) {
-    const sounds = Array.isArray(soundConfig)
-        ? soundConfig
-        : [soundConfig];
+  for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ?? {})) {
+      const sounds = Array.isArray(soundConfig)
+          ? soundConfig
+          : [soundConfig];
 
-    sounds.forEach((sound, index) => {
-        const path = typeof sound === 'string'
-            ? sound
-            : sound.path;
+      sounds.forEach((sound, index) => {
+          const path = typeof sound === 'string'
+              ? sound
+              : sound.path;
 
-        const key = `${this.encounterId}_${soundName}_${index}`;
+          const key = `${this.encounterId}_${soundName}_${index}`;
 
-        if (!this.cache.audio.exists(key)) {
-            this.load.audio(key, path);
-        }
-    });
-}
+          if (!this.cache.audio.exists(key)) {
+              this.load.audio(key, path);
+          }
+      });
+  }
+
+  
 
 
     // =====================================
@@ -275,6 +280,45 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
     this.enemyTypingTimer = null;
     this.bobTypingTimer = null;
     this.playerLowMoraleShown = false;
+
+
+    
+
+    // =====================================
+    // BAGGRUNDSMUSIK - INTRO + LOOP
+    // =====================================
+
+    if (
+        this.cache.audio.exists('musicIntro') &&
+        this.cache.audio.exists('musicLoop')
+    ) {
+        const musicIntro = this.sound.add('musicIntro', {
+            volume: 0.1,
+            loop: false
+        });
+
+        const musicLoop = this.sound.add('musicLoop', {
+            volume: 0.1,
+            loop: true
+        });
+
+        // Når introen slutter, starter loopet
+        musicIntro.once('complete', () => {
+            musicLoop.play();
+        });
+
+        // Start introen
+        musicIntro.play();
+
+        // Ryd op, når scenen lukkes
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            musicIntro.stop();
+            musicLoop.stop();
+
+            musicIntro.destroy();
+            musicLoop.destroy();
+        });
+    }
 
     // =====================================
     // BOBS REPLIKKER
