@@ -692,6 +692,7 @@ export default class Match3Board {
       return;
     }
 
+
     // =====================================
     // ANIMERET BRIKBYT
     // =====================================
@@ -733,7 +734,10 @@ export default class Match3Board {
       !success
     ) {
       this.setState(
-        'SWAP_BACK'
+        'SWAP_BACK',
+        this.scene.sound.play('WrongSwapSound', {
+          volume: 0.6
+        }),
       );
 
       await this.animateSwap(
@@ -1034,88 +1038,57 @@ export default class Match3Board {
   // ANIMATION AF MATCH
   // =====================================
 
-  async animateMatches(
-    matches
-  ) {
-    const cells =
-      this.getUniqueMatchCells(
-        matches
-      );
-
+  
+async animateMatches(matches) {
+    const cells = this.getUniqueMatchCells(matches);
     const targets = [];
 
-    for (
-      const cell
-      of cells
-    ) {
-      const tile =
-        this.tileViews
-          [cell.row]
-          [cell.col];
+    for (const cell of cells) {
+        const tile = this.tileViews[cell.row][cell.col];
 
-      if (
-        tile
-      ) {
-        targets.push(
-          tile
-        );
-      }
+        if (tile) {
+            targets.push(tile);
+        }
     }
 
-    if (
-      targets.length === 0
-    ) {
-      return;
+    if (targets.length === 0) {
+        return;
     }
+
+    this.scene.sound.play('matchSound', {
+      volume: 0.5
+    });
 
     // Lille pop
-    await this.tween(
-      targets,
-      {
+    await this.tween(targets, {
         scaleX: 1.15,
         scaleY: 1.15,
         duration: 70,
-        ease:
-          'Quad.easeOut'
-      }
-    );
+        ease: 'Quad.easeOut'
+    });
 
     // Forsvind
-    await this.tween(
-      targets,
-      {
+    await this.tween(targets, {
         scaleX: 0,
         scaleY: 0,
         alpha: 0,
         duration: 110,
-        ease:
-          'Back.easeIn'
-      }
-    );
+        ease: 'Back.easeIn'
+    });
 
     // Destroy matched tiles
-    for (
-      const cell
-      of cells
-    ) {
-      const tile =
-        this.tileViews
-          [cell.row]
-          [cell.col];
+    for (const cell of cells) {
+        const tile = this.tileViews[cell.row][cell.col];
 
-      if (
-        !tile
-      ) {
-        continue;
-      }
+        if (!tile) {
+            continue;
+        }
 
-      tile.destroy();
-
-      this.tileViews
-        [cell.row]
-        [cell.col] = null;
+        tile.destroy();
+        this.tileViews[cell.row][cell.col] = null;
     }
-  }
+}
+
 
   // =====================================
   // FALD OG GENOPFYLDNING
