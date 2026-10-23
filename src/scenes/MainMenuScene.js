@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { musicManager } from '../audio/musicManager.js';
+import { musicManager } from '../audio/MusicManager.js';
 
 
 export default class MainMenuScene extends Phaser.Scene {

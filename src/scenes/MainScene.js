@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
 import roundedPanel from '../ui/roundedPanel.js';
-import { musicManager } from '../audio/musicManager.js';
+import { musicManager } from '../audio/MusicManager.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
