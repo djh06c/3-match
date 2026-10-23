@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
 import roundedPanel from '../ui/roundedPanel.js';
+import { musicManager } from '../audio/musicManager.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -76,9 +77,6 @@ export default class MainScene extends Phaser.Scene {
     this.load.audio('WrongSwapSound', '/assets/audio/swapWrong.wav');
     this.load.audio('BobDMG', '/assets/audio/getHit.wav');
     this.load.audio('DeadlineClock', '/assets/audio/clock');
-    //Musik
-    this.load.audio('musicIntro', '/assets/audio/music1.mp3');
-    this.load.audio('musicLoop', '/assets/audio/music2.mp3');
 
     //custom lyde pr enemy
     
@@ -218,6 +216,9 @@ export default class MainScene extends Phaser.Scene {
 
 
   create() {
+
+    musicManager.setMuffled(false);
+
     const width = this.scale.width;
 
     // =====================================
@@ -280,45 +281,6 @@ export default class MainScene extends Phaser.Scene {
     this.enemyTypingTimer = null;
     this.bobTypingTimer = null;
     this.playerLowMoraleShown = false;
-
-
-    
-
-    // =====================================
-    // BAGGRUNDSMUSIK - INTRO + LOOP
-    // =====================================
-
-    if (
-        this.cache.audio.exists('musicIntro') &&
-        this.cache.audio.exists('musicLoop')
-    ) {
-        const musicIntro = this.sound.add('musicIntro', {
-            volume: 0.1,
-            loop: false
-        });
-
-        const musicLoop = this.sound.add('musicLoop', {
-            volume: 0.1,
-            loop: true
-        });
-
-        // Når introen slutter, starter loopet
-        musicIntro.once('complete', () => {
-            musicLoop.play();
-        });
-
-        // Start introen
-        musicIntro.play();
-
-        // Ryd op, når scenen lukkes
-        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-            musicIntro.stop();
-            musicLoop.stop();
-
-            musicIntro.destroy();
-            musicLoop.destroy();
-        });
-    }
 
     // =====================================
     // BOBS REPLIKKER
