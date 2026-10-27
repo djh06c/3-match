@@ -1464,8 +1464,7 @@ export default class MainScene extends Phaser.Scene {
     // Afspil Bobs angrebsanimation
     this.playPlayerAttackAnimation();
 
-    // Registrer hele angrebet til campaign score.
-    // Overkill tæller også med.
+    // Tæl hele angrebet, inklusive overkill, én gang til campaign score.
     this.campaignScore.damage += this.turnDamage;
 
     // Giv fjenden skade - KUN ÉN GANG
