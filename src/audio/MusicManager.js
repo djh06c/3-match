@@ -5,8 +5,8 @@ class MusicManager {
         this.loop = null;
         this.started = false;
 
-        this.normalVolume = 0.3;
-        this.muffledVolume = 0.1;
+        this.normalVolume = 0.1;
+        this.muffledVolume = 0.05;
     }
 
     start(scene) {

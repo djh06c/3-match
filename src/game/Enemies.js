@@ -200,6 +200,31 @@ const enemies = {
   ceoOverlord: {
     id: 'ceoOverlord',
     name: 'CEO-VERLORD',
+
+     sounds: {
+
+      spawn: '/assets/audio/ceOverSpawn.wav',
+
+      attack: [
+      { 
+        path: '/assets/audio/papir1.wav',
+        delay: 0
+      },
+      {
+        path: '/assets/audio/burnpapir.wav',
+        delay: 1250
+      }
+    ],
+      death: [
+        {
+        path: '/assets/audio/CEOdeath.wav',
+        delay: 0,
+
+        path: '/assets/audio/ceOverSpawn.wav',
+        delay: 0
+        }
+      ]
+    },
     abilities: [{ type: 'banTiles', everyTurns: 3,
       description: 'At the start of the fight and every third round, CEO-VERLORD bans a random tile type for your next two rounds. Free AI moves do not shorten the ban. Grey tiles can still be moved and matched, but you lose Morale equal to 50% of the damage dealt by that tile type, including cascades.' }],
     hideAfterDeath: true,
@@ -250,6 +275,24 @@ const enemies = {
   necromanager: {
     id: 'necromanager',
     name: 'NECROMANAGER',
+
+    sounds: {
+
+      attack: [
+        {
+          path: '/assets/audio/papir1.wav',
+          delay: 500
+        }
+
+      ],
+      summon: '/assets/audio/ceOverSpawn.wav',
+
+      death: {
+        path: '/assets/audio/necromancerDeath.mp3',
+        delay: 1000
+      }
+    },
+
     y: 125,
     maxHP: 100,
     baseDamage: 5,
