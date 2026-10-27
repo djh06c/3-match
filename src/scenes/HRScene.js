@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import roundedPanel from '../ui/roundedPanel.js';
+import { musicManager } from '../audio/MusicManager.js';
 
 export default class HRScene extends Phaser.Scene {
   constructor() {
@@ -30,6 +31,9 @@ export default class HRScene extends Phaser.Scene {
   // INTRODUKTION OG FAST BAGGRUND
   // =====================================
   create() {
+
+    musicManager.setMuffled(true);
+
     const room = this.add.sprite(this.scale.width / 2, this.scale.height / 2, 'hrOfficeStart');
     room.setScale(Math.min(this.scale.width / 120, this.scale.height / 100));
 

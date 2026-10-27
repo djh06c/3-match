@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
 import roundedPanel from '../ui/roundedPanel.js';
+import { musicManager } from '../audio/MusicManager.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -79,23 +80,25 @@ export default class MainScene extends Phaser.Scene {
 
     //custom lyde pr enemy
     
-for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ?? {})) {
-    const sounds = Array.isArray(soundConfig)
-        ? soundConfig
-        : [soundConfig];
+  for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ?? {})) {
+      const sounds = Array.isArray(soundConfig)
+          ? soundConfig
+          : [soundConfig];
 
-    sounds.forEach((sound, index) => {
-        const path = typeof sound === 'string'
-            ? sound
-            : sound.path;
+      sounds.forEach((sound, index) => {
+          const path = typeof sound === 'string'
+              ? sound
+              : sound.path;
 
-        const key = `${this.encounterId}_${soundName}_${index}`;
+          const key = `${this.encounterId}_${soundName}_${index}`;
 
-        if (!this.cache.audio.exists(key)) {
-            this.load.audio(key, path);
-        }
-    });
-}
+          if (!this.cache.audio.exists(key)) {
+              this.load.audio(key, path);
+          }
+      });
+  }
+
+  
 
 
     // =====================================
@@ -213,6 +216,9 @@ for (const [soundName, soundConfig] of Object.entries(this.enemyConfig.sounds ??
 
 
   create() {
+
+    musicManager.setMuffled(false);
+
     const width = this.scale.width;
 
     // =====================================

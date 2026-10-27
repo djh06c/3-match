@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { musicManager } from '../audio/MusicManager.js';
+
 
 export default class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -19,11 +21,17 @@ export default class MainMenuScene extends Phaser.Scene {
         frameHeight: 175
       }
     );
+
+    this.load.audio('musicIntro', '/assets/audio/music1.mp3');
+    this.load.audio('musicLoop', '/assets/audio/music2.mp3');
   }
+
 
   create() {
     const width = this.scale.width;
     const height = this.scale.height;
+
+    musicManager.start(this);
 
     // =====================================
     // BAGGRUNDSANIMATION

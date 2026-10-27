@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import roundedPanel from '../ui/roundedPanel.js';
+import { musicManager } from '../audio/MusicManager.js';
 
 export default class LunchScene extends Phaser.Scene {
   constructor() {
@@ -29,6 +30,9 @@ export default class LunchScene extends Phaser.Scene {
   // FROKOSTLOKALE OG MORALE
   // =====================================
   create() {
+
+    musicManager.setMuffled(true);
+
     const width = this.scale.width;
     const height = this.scale.height;
     const secondVisit = this.progression.completedEncounterId === 'cardboardMimic';
