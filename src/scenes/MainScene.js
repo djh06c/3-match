@@ -1456,22 +1456,28 @@ export default class MainScene extends Phaser.Scene {
     // BOBS ANGREB
     // =====================================
 
+    
+    // =====================================
+    // BOBS ANGREB
+    // =====================================
+
+    // Afspil Bobs angrebsanimation
     this.playPlayerAttackAnimation();
 
     // Tæl hele angrebet, inklusive overkill, én gang til campaign score.
     this.campaignScore.damage += this.turnDamage;
 
-    // Enemy tager skade
+    // Giv fjenden skade - KUN ÉN GANG
     this.damageEnemy(this.turnDamage);
 
     // Afspil hit-lyd
     if (
-      this.turnDamage > 0 &&
-      this.cache.audio.exists('hitSound')
+        this.turnDamage > 0 &&
+        this.cache.audio.exists('hitSound')
     ) {
-      this.sound.play('hitSound', {
-        volume: 0.8
-      });
+        this.sound.play('hitSound', {
+            volume: 0.8
+        });
     }
 
     if (bannedTileDamage > 0) {
@@ -2295,7 +2301,11 @@ export default class MainScene extends Phaser.Scene {
 
 
   // Afspil fjendens angrebslyd
-  this.playEnemySounds('attack');
+  const soundAction = this.enemyConfig.sounds?.[attackAction]
+        ? attackAction
+        : 'attack';
+
+    this.playEnemySounds(soundAction);
 
     this.enemy.play(
       attackAnimation.key
