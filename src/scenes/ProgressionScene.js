@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import enemies from '../game/Enemies.js';
+import { createMusicToggleButton } from '../ui/MusicToggleButton.js';
 
 export default class ProgressionScene extends Phaser.Scene {
   constructor() {
@@ -25,6 +26,16 @@ export default class ProgressionScene extends Phaser.Scene {
   // VISNING AF NÆSTE KAMPAGNETRIN
   // =====================================
   create() {
+
+    this.createAIControls();
+    if (import.meta.env.DEV) this.createDevSkipButton();
+    this.updatePlayerHealthBar();
+    this.startEncounter();
+
+    createAudioControls(this);
+
+    createMusicToggleButton(this);
+
     const width = this.scale.width;
     const height = this.scale.height;
     const campaignComplete = this.progression.completedEncounterId === 'ceoOverlord';
