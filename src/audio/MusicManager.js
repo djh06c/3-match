@@ -1,4 +1,3 @@
-
 class MusicManager {
     constructor() {
         this.intro = null;
@@ -7,6 +6,9 @@ class MusicManager {
 
         this.normalVolume = 0.1;
         this.muffledVolume = 0.05;
+        this.isMuffled = false;
+
+        this.musicMuted = localStorage.getItem('musicMuted') === 'true';
     }
 
     start(scene) {
@@ -34,40 +36,56 @@ class MusicManager {
             loop: true
         });
 
+        this.updateMusicVolume();
+
         // Når introen er færdig, start loopet
         this.intro.once('complete', () => {
             if (this.started) {
                 this.loop.play();
+                this.updateMusicVolume();
             }
         });
 
         this.started = true;
 
-        // Forsøg automatisk at starte musikken.
-        // Hvis browseren blokerer lyd, starter den,
-        // når Phasers Sound Manager bliver unlocked.
+        // Forsøg automatisk at starte musikken
         if (sound.locked) {
             sound.once('unlocked', () => {
                 if (this.started && this.intro) {
                     this.intro.play();
+                    this.updateMusicVolume();
                 }
             });
         } else {
             this.intro.play();
+            this.updateMusicVolume();
         }
     }
 
-    // Dæmp musikken i bestemte områder
-    setMuffled(muffled) {
-        const volume = muffled
-            ? this.muffledVolume
-            : this.normalVolume;
+    updateMusicVolume() {
+        const volume = this.musicMuted
+            ? 0
+            : this.isMuffled
+                ? this.muffledVolume
+                : this.normalVolume;
 
         this.intro?.setVolume(volume);
         this.loop?.setVolume(volume);
     }
 
-    // Stop musikken helt, hvis vi får brug for det
+    // Dæmp musikken i bestemte områder
+    setMuffled(muffled) {
+        this.isMuffled = muffled;
+        this.updateMusicVolume();
+    }
+
+    toggleMusic() {
+        this.musicMuted = !this.musicMuted;
+        localStorage.setItem('musicMuted', String(this.musicMuted));
+        this.updateMusicVolume();
+        return this.musicMuted;
+    }
+
     stop() {
         this.started = false;
 

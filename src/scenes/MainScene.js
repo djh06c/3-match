@@ -3,6 +3,7 @@ import Match3Board from '../game/Match3Board.js';
 import enemies from '../game/Enemies.js';
 import roundedPanel from '../ui/roundedPanel.js';
 import { musicManager } from '../audio/MusicManager.js';
+import { createMusicToggleButton } from '../ui/MusicToggleButton.js';
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -25,6 +26,9 @@ export default class MainScene extends Phaser.Scene {
   }
 
   preload() {
+
+    this.load.image('musicOn', '/assets/ui/musicOn.png');
+    this.load.image('musicOff', '/assets/ui/musicOff.png');
     this.load.image('inkStain',
       import.meta.env.BASE_URL + 'assets/mobs/Printosaurus/Inkstain.png');
     this.load.image('aiChip',
@@ -851,6 +855,8 @@ export default class MainScene extends Phaser.Scene {
     if (import.meta.env.DEV) this.createDevSkipButton();
     this.updatePlayerHealthBar();
     this.startEncounter();
+
+    createMusicToggleButton(this);
   }
 
   // =====================================

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { musicManager } from '../audio/MusicManager.js';
+import { createMusicToggleButton } from '../ui/MusicToggleButton.js';
 
 
 export default class MainMenuScene extends Phaser.Scene {
@@ -11,6 +12,9 @@ export default class MainMenuScene extends Phaser.Scene {
   // INDLÆSNING AF GRAFIK
   // =====================================
   preload() {
+
+    this.load.image('musicOn', '/assets/ui/musicOn.png');
+    this.load.image('musicOff', '/assets/ui/musicOff.png');
     // Main menu background animation
     // Antager 30 frames og 148x126 pr frame
     this.load.spritesheet(
@@ -32,6 +36,8 @@ export default class MainMenuScene extends Phaser.Scene {
     const height = this.scale.height;
 
     musicManager.start(this);
+
+    createMusicToggleButton(this);
 
     // =====================================
     // BAGGRUNDSANIMATION
