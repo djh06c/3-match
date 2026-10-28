@@ -15,7 +15,7 @@ export default class MainMenuScene extends Phaser.Scene {
     // Antager 30 frames og 148x126 pr frame
     this.load.spritesheet(
       'mainMenuAnimation',
-      '/assets/backgrounds/MainMenuAnimation.png',
+      '/assets/backgrounds/MainMenuSkies.png',
       {
         frameWidth: 200,
         frameHeight: 175
@@ -44,7 +44,7 @@ export default class MainMenuScene extends Phaser.Scene {
           'mainMenuAnimation',
           {
             start: 0,
-            end: 39
+            end: 197
           }
         ),
         frameRate: 10,
@@ -66,14 +66,7 @@ export default class MainMenuScene extends Phaser.Scene {
 
     background.play('main-menu-bg');
 
-    // =====================================
-    // KNAP TIL NYT SPIL
-    // =====================================
-
-    // Jeg har placeret den nede ved
-    // parkeringspladsen i venstre side.
-    // Hvis du vil have den i højre side,
-    // så ændr bare buttonX.
+   //knap
     const buttonX = 160;
     const buttonY = height - 95;
 
