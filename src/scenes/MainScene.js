@@ -112,7 +112,11 @@ export default class MainScene extends Phaser.Scene {
 
     this.load.image(
       'match3Background',
-      '/assets/backgrounds/Baggrund-match3-2.0.png'
+
+        //"Test" er den nuværende baggrund, den har en udvidet bjælke til damage.
+
+      // '/assets/backgrounds/Baggrund-match3-2.0.png'
+      '/assets/backgrounds/Baggrund-match3-test.png'
     );
 
     // =====================================
@@ -1316,13 +1320,13 @@ export default class MainScene extends Phaser.Scene {
         this.hideEnemySpeechBubble();
         this.hideBobSpeechBubble();
         this.statusText.setText(
-          'Bytter...'
+          'Swapping...'
         );
         break;
 
       case 'SWAP_BACK':
         this.statusText.setText(
-          'Ugyldigt træk.'
+          'Invalid move.'
         );
         break;
 
@@ -1334,13 +1338,13 @@ export default class MainScene extends Phaser.Scene {
 
       case 'FALLING':
         this.statusText.setText(
-          'Tiles falder...'
+          'Tiles are falling...'
         );
         break;
 
       case 'ENEMY_TURN':
         this.statusText.setText(
-          `${this.enemyConfig.name}s tur...`
+          `${this.enemyConfig.name}s turn...`
         );
         break;
 
@@ -1528,7 +1532,7 @@ export default class MainScene extends Phaser.Scene {
       }
 
       this.statusText.setText(
-        `${this.enemyConfig.name} gør sig klar...`,
+        `${this.enemyConfig.name} is preparing his move...`,
       );
 
       this.time.delayedCall(
@@ -1991,7 +1995,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     this.statusText.setText(
-      `${this.enemyConfig.name}s tur...`
+      `${this.enemyConfig.name}s turn...`
     );
 
     if (this.enemyHitTimer) {
@@ -2411,7 +2415,7 @@ export default class MainScene extends Phaser.Scene {
         ? `${this.enemyConfig.name}: INK ATTACK! Tiles hidden for one turn.`
         : damage < 0
         ? `Organisation restored ${healedMorale} Morale!`
-        : `${this.enemyConfig.name} gjorde ${this.enemyTurnDamage} morale damage!`
+        : `${this.enemyConfig.name} did ${this.enemyTurnDamage} morale damage!`
     );
   }
 
