@@ -27,13 +27,6 @@ export default class ProgressionScene extends Phaser.Scene {
   // =====================================
   create() {
 
-    this.createAIControls();
-    if (import.meta.env.DEV) this.createDevSkipButton();
-    this.updatePlayerHealthBar();
-    this.startEncounter();
-
-    createAudioControls(this);
-
     createMusicToggleButton(this);
 
     const width = this.scale.width;
